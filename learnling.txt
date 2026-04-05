@@ -1,0 +1,29 @@
+1.部署：
+    项目部署的时候是有两种不同的部署方式的：一种是远程虚拟机部署，另一种的本地部署
+    远程虚拟机部署：首先虚拟机部署就是部署在docker中，这时候就需要使用持续集成部署：git私服Gogs->Jenkins->docker
+    意思就是将自己的代码连接到自己的git容器(本地的)，然后每次推送代码，都会被Gogs接收然后在告诉Jenkins进行自动打包成镜像然后部署在docker中，实现
+    自动推送，自动打包部署
+    本地部署：就是将项目的服务运行在idea中，跟刚学黑马商城的微服务一样，运行在localhost:8081这样的
+2.一般的我们访问虚拟机的nacos，地址是192.168.150.101:8848这样的进入nacos页面，但是端口难记，虚拟机地址有时候也记不住，这时候就可以修改c盘的
+    C:\Windows\System32\drivers\etc的host文件，将容易记住的域名 比如nacos.com 等效于192.168.150.101，然后端口在nginx的config文件配置，进行
+    反向代理被分配的对应的端口即可达成，输入域名就能到达对应的地址网页
+3.在微服务请求访问流程中，我们要搞清楚，是最开始客户端也就是前端会发送请求到nginx，然后nginx反向代理到网关gateway,网关会对前端发过来的请求进行token解析
+    也就是jwt生成的令牌进行解析看是否正确然后将提取出userid保存到请求头中，然后根据网关的配置文件：
+    routes:
+     - id: learning     #网关路由唯一id
+        uri: lb://learning-service     #lb:负载均衡    learning-service：会到nacos寻找名为learning-service的服务列表
+        predicates:
+            - Path=/learning        #表示什么条件才去往nacos找服务
+    网关会去nacos中找到对应的服务列表然后负载均衡找到一个服务地址去访问微服务，在到达微服务之前会被微服务的全局拦截器UserInfoInterceptor
+    进行拦截，专门来提取请求头中的userid，然后赋值到ThreadLocal中UserContext.setUser，这样的话服务就能直接获得userid，当然如果用FeignClient来联系的同步调用
+    依旧可以利用ThreadLocal，如果是异步操作，最后用rabbitMQ来进行异步消息通知，在发送消息的时候还要将userid传过去。
+4.服务业务解析：
+    ①：分页查询我的课表：首先一般进行分页查询的时候需要搞清楚几个类：
+    PageQuery:这是前端发过来的进行分页查询的参数类，里面一般包括最重要的Page页码,pageSize每页数量，是否升序isAsc,排序字段，如果还有搜索条件什么的，
+    这些是参数是构建Page查询语句的条件；
+    PageDTO:这是固定的，用于查询分页的返回类型，里面含有查询总条数，总页码数，当前页数据的集合，PageDTO通常需要泛型，泛型一般为VO对象
+    LearningLessonVO:分页返回的数据，通常是根据分页条件查询数据库的出来的PO对象，进行二次查询后缝合成VO对象，因为通常数据库PO对象属性不全
+    所以需要二次查询，不如说PO对象是课程学习信息LearningLesson，有关课程学习情况但缺少课程Course详细信息，所以在查询LearningLessonPO集合后，
+    第一步就先根据LearningLesson集合获取所有courseId,然后拿着courseId查询课程表获取集合courseInfoDTO,然后最好变成一个Map对象<Long,courseInfoDTO>
+    然后对PO对象进行遍历，将每一个PO变成VO，然后根据VO的id获取Map数据然后赋值到PO中即可;
+
