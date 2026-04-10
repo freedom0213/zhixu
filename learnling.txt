@@ -17,7 +17,7 @@
     网关会去nacos中找到对应的服务列表然后负载均衡找到一个服务地址去访问微服务，在到达微服务之前会被微服务的全局拦截器UserInfoInterceptor
     进行拦截，专门来提取请求头中的userid，然后赋值到ThreadLocal中UserContext.setUser，这样的话服务就能直接获得userid，当然如果用FeignClient来联系的同步调用
     依旧可以利用ThreadLocal，如果是异步操作，最后用rabbitMQ来进行异步消息通知，在发送消息的时候还要将userid传过去。
-4.服务业务解析：
+4.服务业务解析Ⅰ：
     ①：分页查询我的课表：首先一般进行分页查询的时候需要搞清楚几个类：
     PageQuery:这是前端发过来的进行分页查询的参数类，里面一般包括最重要的Page页码,pageSize每页数量，是否升序isAsc,排序字段，如果还有搜索条件什么的，
     这些是参数是构建Page查询语句的条件；
@@ -26,4 +26,42 @@
     所以需要二次查询，不如说PO对象是课程学习信息LearningLesson，有关课程学习情况但缺少课程Course详细信息，所以在查询LearningLessonPO集合后，
     第一步就先根据LearningLesson集合获取所有courseId,然后拿着courseId查询课程表获取集合courseInfoDTO,然后最好变成一个Map对象<Long,courseInfoDTO>
     然后对PO对象进行遍历，将每一个PO变成VO，然后根据VO的id获取Map数据然后赋值到PO中即可;
-
+    ②：在有些服务业务是通过RabbitMQ进行的，比如在删除课表中的课程时候，一种是直接手动删除，一种是通过用户退款，所以在第二种的时候就需要使用RabbitMQ消息监听
+    进行业务，具体就是在交易trade模块下的退款方法中，在最后退款的时候发送消息：
+    rabbitHelper.send(
+            MqConstants.Exchange.ORDER_EXCHANGE,       #指定exchange
+            MqConstants.Key.ORDER_REFUND_KEY,          #指定routingKey
+            OrderBasicDTO.builder()                    #构建传递的数据对象
+                .orderId(refundApply.getOrderId())
+                .userId(refundApply.getUserId())
+                .courseIds(CollUtils.singletonList(detail.getCourseId())).build());
+    然后这算是发送者发送了消息，然后在消费者，在Lesson模块进行定义listener消息监听者，现在注解上@RabbitListener()加上queue exchange key进行绑定，然后就能
+    进行调用service业务了
+5.其实在进行的增删改查的时候，只需要在impl进行对数据库的操作即可；最好是使用lambdaQuery().eq()..like().in().one这样，特别好用
+    其中.eq等的方法(方法引用，匹配的值)
+6.访问不了虚拟机远程地址中的容器问题：
+    我发现，每次重启后，就突然访问不了虚拟机中的容器了，无论是用域名nacos.tianji.com还是说用地址172.168.150.101:8848这样的都不能访问
+    但是nginx可以正常访问:welcome to nginx!其原因就是nginx启动的比docker中的容器在时间上要早，一旦早的话，nginx中配置的端口就无法与
+    容器进行绑定了，我们要知道无论是请求还是访问，我们部署的容器或者域名都是172.168.150.101，而怎样分配到不同的服务中呢？？就是nginx进行
+    反向代理所指引的，所以这时候我们只要在docker中重启nginx即可：sudo systemctl restart nginx
+7.服务业务分析Ⅱ：
+    ①：分页查询的时候我们一般都是返回的是PageDTO<T> 类中包括总条数，总页数，还有T的集合，如果返回的数据还有其它需要的数据，我们完全可以继续自定义一个
+    VO对象结成PageDTO<T>
+    ②：在微服务中，不同模块因为绑定不同的数据库，所以不能在业务进行对数据库的相互调用，比如orderImpl调用UserMapper 还自动注入@autoWired，这样是不行的，
+    当真的需要调用其它模块的数据库的时候，只需要利用Client,调用其他模块的controller->service即可。
+    ③：我们平常在impl写的lambdaQuery.这样的方法实际正是使用的mapper中的方法，我只是间接在impl中使用mapper，所以说在配置好数据库的对应关系后
+    lambdaQuery()==myMapper.select(wrapper)  所以说lambdaQuery这个整体其实就是wrapper对象，但是当目前service与数据库不统一的时候，就不能在
+    service直接调用lambdaQuery了，这时候就需要调用mapper传递wrapper了。
+    ④为了方便，我们可以下载插件mybatisPlus就可以直接绑定数据库关系并且还能直接生成对应的controller,service,mapper等等
+    ⑤在针对视频播放记录数据处理中，我们使用了延迟队列＋redis的操作
+    首先分析：因为不同于考试，在小节的观看视频任务中需要频繁发送观看数据，之前的想法是，发送一个数据，我们就根据lessonId,courseId,去在lessonRecord中修改moment
+    但是如果当线程多的时候，每10秒就访问依次数据库，那数据库承受的压力很大，所以我们改正的策略是在增和修改的时候，我们直接在redis中操作，并且还定义一个延迟队列queue
+    然后添加一个延迟任务：queue.add(new DelayTask<>(new RecordTaskData(record),Duration.ofSeconds(20)));  也就是每20s后延迟任务被延迟队列放行会会进行执行然后
+    会检查redis和现在传来的数据中moment数据是否相同->相同代表用户已停止观看->可以进行修改
+    其中queue是延迟队列   DelayTask是延迟任务  参数可以提交数据和延迟时间，所以问题1：在增和修改moment对此访问数据库这一问题解决
+    接着问题二：在已知是视频后需要先去redis中去查询是否有老数据，所以就是查询redis
+    问题三：在视频已经学完后，需要修改表中实际已学完节的数量和状态，此时redis还是未修改，方便期间，这里直接删除redis数据
+    然后在设计redis的时候使用的是redis的hash结构，不同于java的hashmap，这里的hash是key-fieldKey-value    这里我们采用存储redis中数据结构式: lessonId->sectionId->Json.string(moment,finished,id)
+    同时我们如何去对redis的操作呢？？这里就要使用spring提供的private final StringRedisTemplate redisTemplate;  redisTemplate可以直接对redis进行增删改查操作redisTemplate.opsForHash()是表示得出redis
+    中的hash对象
+    其中延迟队列DelayQueue是JDK自带的延迟队列，但会占JVM的内存
