@@ -2,6 +2,9 @@ package com.tianji.learning.mapper;
 
 import com.tianji.learning.domain.po.LearningLesson;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import feign.Param;
+
+import java.util.List;
 
 /**
  * <p>
@@ -13,4 +16,5 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
  */
 public interface LearningLessonMapper extends BaseMapper<LearningLesson> {
 
+    Integer queryTotalPlan(@Param("userId") Long userId);
 }

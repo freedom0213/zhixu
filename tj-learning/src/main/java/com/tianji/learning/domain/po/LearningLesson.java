@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import java.io.Serializable;
 
 import com.tianji.learning.domain.enums.LessonStatus;
+import com.tianji.learning.domain.enums.PlanStatus;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
@@ -57,7 +58,7 @@ public class LearningLesson implements Serializable {
     /**
      * 学习计划状态，0-没有计划，1-计划进行中
      */
-    private LessonStatus planStatus;
+    private PlanStatus planStatus;
 
     /**
      * 已学习小节数量
