@@ -65,3 +65,14 @@
     同时我们如何去对redis的操作呢？？这里就要使用spring提供的private final StringRedisTemplate redisTemplate;  redisTemplate可以直接对redis进行增删改查操作redisTemplate.opsForHash()是表示得出redis
     中的hash对象
     其中延迟队列DelayQueue是JDK自带的延迟队列，但会占JVM的内存
+8.服务业务分析Ⅲ：
+    ①：在点赞系统服务的时候，原本思路是在当前用户进行点赞操作或者取消点赞操作时候，会发送前端信息：是否点赞，点赞业务id(bizId),点赞业务类型，然后同一个接口内
+    对点赞记录表进行增或者删，当然为了确保正确性，在增或者删除的时候判断表中是否已经存在该数据；然后进行操作后还需要更改learning业务中修改likeTimes数据，所以
+    这时候我们使用RabbitMQ,先统计好指定业务id下的点赞总人数然后利用消息发送到指定业务中，然后在learning业务中定义监听器然后修改即可，但是当访问量或者点赞频率
+    足够高的时候，点一个赞就需要访问一下数据库，数据库吃不消的，所以采用redis储存点赞记录，并且点赞效果(最后redis数据同步到数据库)只有最后一步才有效的，所以这里
+    采用延迟任务，每隔一段时间就去更改一下数据，所以这里逻辑就变了，变成前端访问redis->统计点赞数->定时读取缓存中点赞数量->MQ通知业务更改数据
+    一：数据怎样缓存到redis?
+    二：怎样修改redis中的数据?
+    在这里其实我们使用redis中两种数据结构:set(bizIdKey:userId)  zSet(BizType:BizId:userId)
+    当然redis中创建数据结构时候不需要数据库那样先创建表在存数据，redis可以直接存，如果没有顺便创建，并且使用set结构和zSet结构好处：
+    正是因为我们储存点赞记录不需要重复数据，而set表每一个数据都是唯一的，并且zSet可以对

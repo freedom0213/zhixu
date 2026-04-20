@@ -1,7 +1,7 @@
 package com.tianji.learning.domain.dto;
 
 import com.tianji.common.validate.annotations.EnumValid;
-import com.tianji.learning.enums.SectionType;
+import com.tianji.learning.domain.enums.SectionType;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;

@@ -1,4 +1,4 @@
-package com.tianji.learning.enums;
+package com.tianji.learning.domain.enums;
 
 import com.baomidou.mybatisplus.annotation.EnumValue;
 import com.fasterxml.jackson.annotation.JsonCreator;
