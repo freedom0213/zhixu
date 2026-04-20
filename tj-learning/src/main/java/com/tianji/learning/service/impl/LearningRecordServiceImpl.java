@@ -12,7 +12,7 @@ import com.tianji.learning.domain.dto.LearningRecordFormDTO;
 import com.tianji.learning.domain.enums.LessonStatus;
 import com.tianji.learning.domain.po.LearningLesson;
 import com.tianji.learning.domain.po.LearningRecord;
-import com.tianji.learning.enums.SectionType;
+import com.tianji.learning.domain.enums.SectionType;
 import com.tianji.learning.mapper.LearningRecordMapper;
 import com.tianji.learning.service.ILearningLessonService;
 import com.tianji.learning.service.ILearningRecordService;
@@ -21,7 +21,6 @@ import com.tianji.learning.utils.LearningRecordDelayTaskHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 /**
