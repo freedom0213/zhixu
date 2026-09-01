@@ -1,0 +1,22 @@
+spring:
+  rabbitmq:
+    host: ${TJ_MQ_HOST:localhost}
+    port: 5672
+    username: ${RABBITMQ_DEFAULT_USER:tjxt}
+    password: ${RABBITMQ_DEFAULT_PASS:123321}
+    virtual-host: ${RABBITMQ_DEFAULT_VHOST:/tjxt}
+    listener:
+      simple:
+        acknowledge-mode: auto
+        retry:
+          enabled: true
+          initial-interval: 1s
+          max-attempts: 3
+          multiplier: 1
+tj:
+  mq:
+    host: ${TJ_MQ_HOST:localhost}
+    port: 5672
+    vhost: /tjxt
+    username: ${RABBITMQ_DEFAULT_USER:tjxt}
+    password: ${RABBITMQ_DEFAULT_PASS:123321}

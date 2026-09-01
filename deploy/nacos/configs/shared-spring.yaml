@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: jdbc:mysql://${TJ_JDBC_HOST:localhost}:3306/${tj.jdbc.database}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${TJ_JDBC_USERNAME:root}
+    password: ${TJ_JDBC_PASSWORD:1234}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jackson:
+    default-property-inclusion: non_null
+  cloud:
+    loadbalancer:
+      nacos:
+        enabled: true
+  sleuth:
+    enabled: false
+seata:
+  enabled: false

@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="430" viewBox="0 0 1200 430" role="img" aria-labelledby="title desc">
+  <title id="title">Tianji local microservice architecture</title>
+  <desc id="desc">API gateway routes requests to Tianji domain services, backed by Nacos, MySQL, Redis, RabbitMQ and Elasticsearch.</desc>
+  <rect width="1200" height="430" rx="24" fill="#101418"/>
+  <g font-family="Segoe UI, PingFang SC, sans-serif" fill="#f3f6f8">
+    <text x="56" y="62" font-size="18" fill="#8bd3c7" letter-spacing="2">TIANJI / LOCAL STACK</text>
+    <text x="56" y="108" font-size="38" font-weight="700">从网关到基础设施的可复现链路</text>
+    <text x="56" y="138" font-size="18" fill="#aeb8bf">Spring Cloud 微服务 · Nacos 配置与注册 · Docker Compose</text>
+  </g>
+  <g stroke="#3d4a52" stroke-width="2" fill="none">
+    <path d="M600 222H315"/><path d="M600 222H885"/>
+    <path d="M315 222V182"/><path d="M315 222V262"/>
+    <path d="M885 222V182"/><path d="M885 222V262"/>
+  </g>
+  <g font-family="Segoe UI, PingFang SC, sans-serif">
+    <rect x="500" y="178" width="200" height="88" rx="12" fill="#8bd3c7"/>
+    <text x="600" y="214" text-anchor="middle" font-size="24" font-weight="700" fill="#101418">API Gateway</text>
+    <text x="600" y="242" text-anchor="middle" font-size="16" fill="#24423f">:10010</text>
+    <g fill="#1c252b" stroke="#42515a" stroke-width="1">
+      <rect x="190" y="150" width="250" height="64" rx="10"/><rect x="190" y="250" width="250" height="64" rx="10"/>
+      <rect x="760" y="150" width="250" height="64" rx="10"/><rect x="760" y="250" width="250" height="64" rx="10"/>
+    </g>
+    <g fill="#f3f6f8" font-size="20" font-weight="600">
+      <text x="315" y="188" text-anchor="middle">认证 / 用户 / 课程</text><text x="315" y="288" text-anchor="middle">学习 / 考试 / 互动</text>
+      <text x="885" y="188" text-anchor="middle">交易 / 支付 / 营销</text><text x="885" y="288" text-anchor="middle">搜索 / 媒资 / 数据</text>
+    </g>
+    <g fill="#aeb8bf" font-size="15">
+      <text x="56" y="375">Nacos :8848</text><text x="230" y="375">MySQL :3306</text><text x="410" y="375">Redis :6379</text>
+      <text x="570" y="375">RabbitMQ :5672</text><text x="770" y="375">Elasticsearch :9200</text>
+    </g>
+    <path d="M110 350H1060" stroke="#42515a" stroke-width="2"/>
+    <circle cx="600" cy="222" r="5" fill="#f2b880"/>
+  </g>
+</svg>
