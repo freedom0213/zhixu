@@ -1,0 +1,15 @@
+spring:
+  redis:
+    host: ${TJ_REDIS_HOST:localhost}
+    port: 6379
+    timeout: 3s
+    database: 0
+tj:
+  redis:
+    host: ${TJ_REDIS_HOST:localhost}
+    password: ''
+    pool:
+      max-active: 8
+      max-idle: 8
+      min-idle: 1
+      max-wait: 300

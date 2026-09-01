@@ -1,0 +1,160 @@
+name: tianji-local
+
+x-java-service: &java-service
+  restart: unless-stopped
+  environment:
+    SPRING_PROFILES_ACTIVE: local
+    NACOS_SERVER_ADDR: nacos:8848
+    NACOS_NAMESPACE: ""
+    TJ_JDBC_HOST: mysql
+    TJ_JDBC_USERNAME: ${TJ_JDBC_USERNAME:-root}
+    TJ_JDBC_PASSWORD: ${TJ_JDBC_PASSWORD:-1234}
+    TJ_REDIS_HOST: redis
+    TJ_MQ_HOST: rabbitmq
+    RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-tjxt}
+    RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-123321}
+    RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_DEFAULT_VHOST:-/tjxt}
+    ELASTICSEARCH_URIS: http://elasticsearch:9200
+    TJ_KEYSTORE_PASSWORD: ${TJ_KEYSTORE_PASSWORD:-changeit}
+    TJ_KEYSTORE_SECRET: ${TJ_KEYSTORE_SECRET:-changeit}
+  depends_on:
+    mysql:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    rabbitmq:
+      condition: service_healthy
+    elasticsearch:
+      condition: service_healthy
+    nacos-init:
+      condition: service_completed_successfully
+  build:
+    context: ..
+    dockerfile: deploy/service.Dockerfile
+
+services:
+  auth-service:
+    <<: *java-service
+    build:
+      context: ..
+      dockerfile: deploy/service.Dockerfile
+      args:
+        JAR_FILE: tj-auth/tj-auth-service/target/tj-auth-service.jar
+    ports: ["8081:8081"]
+
+  user-service:
+    <<: *java-service
+    build:
+      context: ..
+      dockerfile: deploy/service.Dockerfile
+      args:
+        JAR_FILE: tj-user/target/tj-user.jar
+    ports: ["8082:8082"]
+
+  search-service:
+    <<: *java-service
+    build:
+      context: ..
+      dockerfile: deploy/service.Dockerfile
+      args:
+        JAR_FILE: tj-search/target/tj-search.jar
+    ports: ["8083:8083"]
+
+  media-service:
+    <<: *java-service
+    build:
+      context: ..
+      dockerfile: deploy/service.Dockerfile
+      args:
+        JAR_FILE: tj-media/target/tj-media.jar
+    ports: ["8084:8084"]
+
+  message-service:
+    <<: *java-service
+    build:
+      context: ..
+      dockerfile: deploy/service.Dockerfile
+      args:
+        JAR_FILE: tj-message/tj-message-service/target/tj-message-service.jar
+    ports: ["8085:8085"]
+
+  course-service:
+    <<: *java-service
+    build:
+      context: ..
+      dockerfile: deploy/service.Dockerfile
+      args:
+        JAR_FILE: tj-course/target/tj-course.jar
+    ports: ["8086:8086"]
+
+  pay-service:
+    <<: *java-service
+    build:
+      context: ..
+      dockerfile: deploy/service.Dockerfile
+      args:
+        JAR_FILE: tj-pay/tj-pay-service/target/tj-pay-service.jar
+    ports: ["8087:8087"]
+
+  trade-service:
+    <<: *java-service
+    build:
+      context: ..
+      dockerfile: deploy/service.Dockerfile
+      args:
+        JAR_FILE: tj-trade/target/tj-trade.jar
+    ports: ["8088:8088"]
+
+  exam-service:
+    <<: *java-service
+    build:
+      context: ..
+      dockerfile: deploy/service.Dockerfile
+      args:
+        JAR_FILE: tj-exam/target/tj-exam.jar
+    ports: ["8089:8089"]
+
+  learning-service:
+    <<: *java-service
+    build:
+      context: ..
+      dockerfile: deploy/service.Dockerfile
+      args:
+        JAR_FILE: tj-learning/target/tj-learning.jar
+    ports: ["8090:8090"]
+
+  remark-service:
+    <<: *java-service
+    build:
+      context: ..
+      dockerfile: deploy/service.Dockerfile
+      args:
+        JAR_FILE: tj-remark/target/tj-remark.jar
+    ports: ["8091:8091"]
+
+  promotion-service:
+    <<: *java-service
+    build:
+      context: ..
+      dockerfile: deploy/service.Dockerfile
+      args:
+        JAR_FILE: tj-promotion/target/tj-promotion.jar
+    ports: ["8092:8092"]
+
+  data-service:
+    <<: *java-service
+    build:
+      context: ..
+      dockerfile: deploy/service.Dockerfile
+      args:
+        JAR_FILE: tj-data/target/tj-data.jar
+    ports: ["8093:8093"]
+
+  gateway-service:
+    <<: *java-service
+    build:
+      context: ..
+      dockerfile: deploy/service.Dockerfile
+      args:
+        JAR_FILE: tj-gateway/target/tj-gateway.jar
+    ports: ["10010:10010"]

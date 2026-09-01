@@ -15,3 +15,7 @@ target
 .project
 logs
 job
+.env
+*.local.override.yml
+*.local.override.yaml
+screenshots/raw
