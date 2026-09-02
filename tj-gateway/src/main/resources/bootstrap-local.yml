@@ -8,3 +8,6 @@ spring:
 logging:
   level:
     com.tianji: debug
+tj:
+  auth:
+    excludePath: []

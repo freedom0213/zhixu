@@ -1,4 +1,7 @@
 spring:
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
   datasource:
     url: jdbc:mysql://${TJ_JDBC_HOST:localhost}:3306/${tj.jdbc.database}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: ${TJ_JDBC_USERNAME:root}
@@ -14,3 +17,7 @@ spring:
     enabled: false
 seata:
   enabled: false
+
+tj:
+  interests:
+    top-number: 10

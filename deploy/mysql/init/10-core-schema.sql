@@ -1,0 +1,140 @@
+-- Minimal schema for local backend startup and login demonstration.
+-- Safe to re-run: tables and seed rows are created only when absent.
+
+SET NAMES utf8mb4;
+
+USE tj_user;
+
+CREATE TABLE IF NOT EXISTS `user` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `username` VARCHAR(50) NOT NULL,
+  `cell_phone` VARCHAR(20) DEFAULT NULL,
+  `password` VARCHAR(100) NOT NULL,
+  `status` TINYINT NOT NULL DEFAULT 1,
+  `type` TINYINT NOT NULL DEFAULT 2,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `creater` BIGINT DEFAULT NULL,
+  `updater` BIGINT DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_username` (`username`),
+  UNIQUE KEY `uk_user_cell_phone` (`cell_phone`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `user_detail` (
+  `id` BIGINT NOT NULL,
+  `type` TINYINT NOT NULL DEFAULT 2,
+  `name` VARCHAR(50) DEFAULT NULL,
+  `gender` TINYINT DEFAULT NULL,
+  `icon` VARCHAR(255) DEFAULT NULL,
+  `email` VARCHAR(100) DEFAULT NULL,
+  `qq` VARCHAR(20) DEFAULT NULL,
+  `birthday` DATE DEFAULT NULL,
+  `job` VARCHAR(100) DEFAULT NULL,
+  `province` VARCHAR(50) DEFAULT NULL,
+  `city` VARCHAR(50) DEFAULT NULL,
+  `district` VARCHAR(50) DEFAULT NULL,
+  `intro` VARCHAR(500) DEFAULT NULL,
+  `photo` VARCHAR(255) DEFAULT NULL,
+  `role_id` BIGINT DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `creater` BIGINT DEFAULT NULL,
+  `updater` BIGINT DEFAULT NULL,
+  `dep_id` BIGINT DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT IGNORE INTO `user` (`id`, `username`, `cell_phone`, `password`, `status`, `type`)
+VALUES (1, 'admin', '13800000000', '$2b$12$IByF0GzRp4uihfSsp1nRJ.h2IiKtMEZDgg7IvesuqyPy4vJ0DWR5W', 1, 1);
+INSERT IGNORE INTO `user_detail` (`id`, `type`, `name`, `role_id`)
+VALUES (1, 1, '本地管理员', 1);
+
+USE tj_auth;
+
+CREATE TABLE IF NOT EXISTS `role` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `code` VARCHAR(50) NOT NULL,
+  `name` VARCHAR(100) NOT NULL,
+  `type` TINYINT NOT NULL DEFAULT 0,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `creater` BIGINT DEFAULT NULL,
+  `updater` BIGINT DEFAULT NULL,
+  `dep_id` BIGINT DEFAULT NULL,
+  `deleted` TINYINT NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_role_code` (`code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `account_role` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `account_id` BIGINT NOT NULL,
+  `role_id` BIGINT NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_account_role` (`account_id`, `role_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `menu` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `parent_id` BIGINT NOT NULL DEFAULT 0,
+  `has_children` TINYINT NOT NULL DEFAULT 0,
+  `label` VARCHAR(100) NOT NULL,
+  `path` VARCHAR(255) DEFAULT NULL,
+  `icon` VARCHAR(255) DEFAULT NULL,
+  `priority` INT NOT NULL DEFAULT 127,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `creater` BIGINT DEFAULT NULL,
+  `updater` BIGINT DEFAULT NULL,
+  `dep_id` BIGINT DEFAULT NULL,
+  `deleted` TINYINT NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `privilege` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `menu_id` BIGINT DEFAULT NULL,
+  `intro` VARCHAR(255) DEFAULT NULL,
+  `method` VARCHAR(20) DEFAULT NULL,
+  `uri` VARCHAR(255) DEFAULT NULL,
+  `internal` TINYINT NOT NULL DEFAULT 0,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `creater` BIGINT DEFAULT NULL,
+  `updater` BIGINT DEFAULT NULL,
+  `dep_id` BIGINT DEFAULT NULL,
+  `deleted` TINYINT NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `role_menu` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `role_id` BIGINT NOT NULL,
+  `menu_id` BIGINT NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_role_menu` (`role_id`, `menu_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `role_privilege` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `role_id` BIGINT NOT NULL,
+  `privilege_id` BIGINT NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_role_privilege` (`role_id`, `privilege_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `login_record` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `user_id` BIGINT NOT NULL,
+  `cell_phone` VARCHAR(20) DEFAULT NULL,
+  `login_time` DATETIME DEFAULT NULL,
+  `logout_time` DATETIME DEFAULT NULL,
+  `login_date` DATE DEFAULT NULL,
+  `duration` BIGINT DEFAULT NULL,
+  `ipv4` VARCHAR(45) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT IGNORE INTO `role` (`id`, `code`, `name`, `type`) VALUES (1, 'admin', '管理员', 0);
+INSERT IGNORE INTO `account_role` (`account_id`, `role_id`) VALUES (1, 1);
