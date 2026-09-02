@@ -41,8 +41,9 @@ tj:
   jdbc:
     database: tj_media
   platform:
-    file: LOCAL
-    media: LOCAL
+    # A supported enum value is required for startup. Cloud uploads remain disabled below.
+    file: QI_NIU
+    media: QI_NIU
   tencent:
     appId: ${TENCENT_APP_ID:}
     secretId: ${TENCENT_SECRET_ID:}

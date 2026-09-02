@@ -26,6 +26,8 @@ x-java-service: &java-service
       condition: service_healthy
     elasticsearch:
       condition: service_healthy
+    elasticsearch-init:
+      condition: service_completed_successfully
     nacos-init:
       condition: service_completed_successfully
   build:

@@ -52,6 +52,10 @@ public class LearningRecordServiceImpl extends ServiceImpl<LearningRecordMapper,
         //2.因为我们返回的LearningLessonDTO中既有LearningLesson中的数据也有在LearningRecord中的数据
         // 先在课表中查询出latestSectionId
         LearningLesson lesson = lessonService.queryLessonByCourseIdAndUserId(courseId,userId);
+        // 未购买课程时没有课表，课程详情页应返回空学习进度而不是抛出异常。
+        if (lesson == null) {
+            return null;
+        }
         //3.根据课表id查询出学习记录  其实学习记录表lessonRecord中都是一个课表id对应一个课程id对应一个小节id,有学习时长，学习小节是否完成等等的学习记录
         List<LearningRecord> records= lambdaQuery()
                 .eq(LearningRecord::getLessonId,lesson.getId()).list();
