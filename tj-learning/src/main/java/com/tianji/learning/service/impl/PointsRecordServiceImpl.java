@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.time.format.DateTimeFormatter;
 
 /**
  * <p>
@@ -108,6 +109,19 @@ public class PointsRecordServiceImpl extends ServiceImpl<PointsRecordMapper, Poi
             vos.add(vo);
         }
         return vos;
+    }
+
+    @Override
+    public int queryMyTotalPoints() {
+        Long userId = UserContext.getUser();
+        if (userId == null) return 0;
+        String key = RedisConstants.POINTS_BOARD_KEY_PREFIX + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMM"));
+        Double score = redisTemplate.opsForZSet().score(key, userId.toString());
+        if (score != null) return score.intValue();
+        Integer total = getBaseMapper().selectList(new QueryWrapper<PointsRecord>().eq("user_id", userId))
+                .stream().mapToInt(PointsRecord::getPoints).sum();
+        if (total > 0) redisTemplate.opsForZSet().add(key, userId.toString(), total);
+        return total;
     }
 
     private int queryUserPointsByTypeAndDate(

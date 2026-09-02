@@ -29,6 +29,7 @@ import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 import org.elasticsearch.search.fetch.subphase.highlight.HighlightField;
 import org.elasticsearch.search.sort.SortOrder;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -40,6 +41,8 @@ import static com.tianji.search.repository.CourseRepository.PUBLISH_TIME;
 
 @Service
 public class SearchServiceImpl implements ISearchService {
+
+    private static final String SEARCH_HISTORY_KEY_PREFIX = "ss:search:history:";
 
     @Autowired
     private RestHighLevelClient restClient;
@@ -55,6 +58,9 @@ public class SearchServiceImpl implements ISearchService {
 
     @Autowired
     private InterestsProperties interestsProperties;
+
+    @Autowired
+    private StringRedisTemplate redisTemplate;
 
     @Override
     public List<CourseVO> queryCourseByCateId(Long cateLv2Id) {
@@ -165,6 +171,7 @@ public class SearchServiceImpl implements ISearchService {
 
     @Override
     public PageDTO<CourseVO> queryCoursesForPortal(CoursePageQuery query) {
+        rememberSearch(query.getKeyword());
         // 1.搜索数据
         SearchResponse response = searchForResponse(query, CourseVO.EXCLUDE_FIELDS);
         // 2.解析响应
@@ -217,6 +224,63 @@ public class SearchServiceImpl implements ISearchService {
                 .map(SearchHit::getId)
                 .map(Long::valueOf)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<String> completeSuggest(String keyword) {
+        if (StringUtils.isBlank(keyword)) {
+            return CollUtils.emptyList();
+        }
+        SearchRequest request = new SearchRequest(CourseRepository.INDEX_NAME);
+        request.source().query(QueryBuilders.matchPhrasePrefixQuery(CourseRepository.DEFAULT_QUERY_NAME, keyword))
+                .size(8).fetchSource(new String[]{"name"}, null);
+        try {
+            SearchResponse response = restClient.search(request, RequestOptions.DEFAULT);
+            return Arrays.stream(response.getHits().getHits())
+                    .map(SearchHit::getSourceAsString)
+                    .map(json -> JsonUtils.toBean(json, Course.class).getName())
+                    .filter(Objects::nonNull).distinct().collect(Collectors.toList());
+        } catch (IOException e) {
+            throw new CommonException(SearchErrorInfo.QUERY_COURSE_ERROR, e);
+        }
+    }
+
+    @Override
+    public List<String> querySearchHistory() {
+        Long userId = UserContext.getUser();
+        if (userId == null) {
+            return CollUtils.emptyList();
+        }
+        List<String> history = redisTemplate.opsForList().range(SEARCH_HISTORY_KEY_PREFIX + userId, 0, 9);
+        return history == null ? CollUtils.emptyList() : history;
+    }
+
+    @Override
+    public void deleteSearchHistory(String keyword) {
+        Long userId = UserContext.getUser();
+        if (userId != null && StringUtils.isNotBlank(keyword)) {
+            redisTemplate.opsForList().remove(SEARCH_HISTORY_KEY_PREFIX + userId, 1, keyword);
+        }
+    }
+
+    @Override
+    public void clearSearchHistory() {
+        Long userId = UserContext.getUser();
+        if (userId != null) {
+            redisTemplate.delete(SEARCH_HISTORY_KEY_PREFIX + userId);
+        }
+    }
+
+    private void rememberSearch(String keyword) {
+        Long userId = UserContext.getUser();
+        if (userId == null || StringUtils.isBlank(keyword)) {
+            return;
+        }
+        String normalized = keyword.trim();
+        String key = SEARCH_HISTORY_KEY_PREFIX + userId;
+        redisTemplate.opsForList().remove(key, 0, normalized);
+        redisTemplate.opsForList().leftPush(key, normalized);
+        redisTemplate.opsForList().trim(key, 0, 9);
     }
 
 

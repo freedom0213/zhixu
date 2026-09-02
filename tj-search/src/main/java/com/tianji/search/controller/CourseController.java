@@ -35,6 +35,26 @@ public class CourseController {
         return searchService.queryCoursesIdByName(keyword);
     }
 
+    @GetMapping("/completeSuggest/{keyword}")
+    public List<String> completeSuggest(@PathVariable String keyword) {
+        return searchService.completeSuggest(keyword);
+    }
+
+    @GetMapping("/history")
+    public List<String> querySearchHistory() {
+        return searchService.querySearchHistory();
+    }
+
+    @DeleteMapping("/history/{keyword}")
+    public void deleteSearchHistory(@PathVariable String keyword) {
+        searchService.deleteSearchHistory(keyword);
+    }
+
+    @DeleteMapping("/history/clear")
+    public void clearSearchHistory() {
+        searchService.clearSearchHistory();
+    }
+
     @ApiOperation("处理指定课程上架失败的问题")
     @PostMapping("/up")
     public void handleCoursesUp(

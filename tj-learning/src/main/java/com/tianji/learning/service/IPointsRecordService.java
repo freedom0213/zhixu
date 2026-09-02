@@ -21,4 +21,6 @@ public interface IPointsRecordService extends IService<PointsRecord> {
 
     List<PointsStatisticsVO> queryMyPointsToday();
 
+    int queryMyTotalPoints();
+
 }

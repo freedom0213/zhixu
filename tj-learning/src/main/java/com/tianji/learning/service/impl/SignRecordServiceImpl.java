@@ -85,6 +85,21 @@ public class SignRecordServiceImpl implements ISignRecordService {
         return signResultVO;
     }
 
+    @Override
+    public List<Integer> queryCurrentMonthRecords() {
+        Long userId = UserContext.getUser();
+        LocalDate now = LocalDate.now();
+        String key = RedisConstants.SIGN_RECORD_KEY_PREFIX + userId + now.format(DateUtils.SIGN_DATE_SUFFIX_FORMATTER);
+        List<Long> result = redisTemplate.opsForValue().bitField(key,
+                BitFieldSubCommands.create().get(BitFieldSubCommands.BitFieldType.unsigned(now.lengthOfMonth())).valueAt(0));
+        long bits = CollUtils.isEmpty(result) || result.get(0) == null ? 0L : result.get(0);
+        List<Integer> records = new java.util.ArrayList<>(now.lengthOfMonth());
+        for (int day = 0; day < now.lengthOfMonth(); day++) {
+            records.add((int) ((bits >> day) & 1));
+        }
+        return records;
+    }
+
     private int countSignDays(String key, int len) {
         // 1.获取本月从第一天开始，到今天为止的所有签到记录  这里result是多次bitField命令集合  因为这里只进行一次 所以集合只有一个元素
         List<Long> result = redisTemplate.opsForValue()
