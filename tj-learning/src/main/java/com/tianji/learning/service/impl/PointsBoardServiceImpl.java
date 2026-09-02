@@ -135,6 +135,7 @@ public class PointsBoardServiceImpl extends ServiceImpl<PointsBoardMapper, Point
             p.setUserId(Long.valueOf(userId));
             p.setPoints(score.intValue());
             p.setRank(rank++);
+            list.add(p);
         }
         return list;
     }
@@ -153,7 +154,7 @@ public class PointsBoardServiceImpl extends ServiceImpl<PointsBoardMapper, Point
         //5.封装返回
         PointsBoard board = new PointsBoard();
         board.setPoints(points == null ? 0 : points.intValue());
-        board.setRank(rank == null ? 0 : rank.intValue());
+        board.setRank(rank == null ? 0 : rank.intValue() + 1);
         return board;
     }
     //TODO

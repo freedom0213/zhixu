@@ -2,6 +2,7 @@ package com.tianji.promotion.service.impl;
 
 import cn.hutool.core.bean.copier.CopyOptions;
 import com.tianji.common.autoconfigure.mq.RabbitMqHelper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.tianji.common.constants.MqConstants;
 import com.tianji.common.exceptions.BadRequestException;
 import com.tianji.common.exceptions.BizIllegalException;
@@ -12,6 +13,9 @@ import com.tianji.promotion.domain.dto.UserCouponDTO;
 import com.tianji.promotion.domain.po.Coupon;
 import com.tianji.promotion.domain.po.ExchangeCode;
 import com.tianji.promotion.domain.po.UserCoupon;
+import com.tianji.promotion.domain.query.UserCouponQuery;
+import com.tianji.promotion.domain.vo.UserCouponVO;
+import com.tianji.common.domain.dto.PageDTO;
 import com.tianji.promotion.enums.ExchangeCodeStatus;
 import com.tianji.promotion.mapper.CouponMapper;
 import com.tianji.promotion.mapper.UserCouponMapper;
@@ -26,6 +30,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.List;
+import java.util.HashMap;
+import java.util.stream.Collectors;
 
 /**
  * <p>
@@ -64,8 +71,12 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
         if(now.isBefore(coupon.getIssueBeginTime()) || now.isAfter(coupon.getIssueEndTime())){
             throw new BadRequestException("优惠券发放已经结束或尚未开始");
         }
-        //3.TODO检验库存 存在问题 强转成的Coupon对象没有getIssueNum属性
-        if (coupon.getIssueNum() >= coupon.getTotalNum()) {
+        // Redis stores the remaining inventory. The previous implementation
+        // read issueNum from a cache hash that never contained that field.
+        String couponKey = PromotionConstants.COUPON_CACHE_KEY_PREFIX + couponId;
+        Long remaining = redisTemplate.opsForHash().increment(couponKey, "availableNum", -1);
+        if (remaining == null || remaining < 0) {
+            redisTemplate.opsForHash().increment(couponKey, "availableNum", 1);
             throw new BadRequestException("优惠券库存不足");
         }
         /*
@@ -115,11 +126,10 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
         Long count = redisTemplate.opsForHash().increment(key, userId.toString(), 1);
         // 4.2.校验限领数量
         if(count > coupon.getUserLimit()){
+            redisTemplate.opsForHash().increment(key, userId.toString(), -1);
+            redisTemplate.opsForHash().increment(couponKey, "availableNum", 1);
             throw new BadRequestException("超出领取数量");
         }
-        // 5.扣减优惠券库存
-        redisTemplate.opsForHash().increment(
-                PromotionConstants.COUPON_CACHE_KEY_PREFIX + couponId, "totalNum", -1);
 
         // 6.发送MQ消息
         UserCouponDTO uc = new UserCouponDTO();
@@ -212,9 +222,9 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
             return;
         }
         //如果是兑换码，还需要将DB中的兑换码状态置为已兑换
-        if(dto.getCouponId() != null) {
+        if(dto.getSerialNum() != null) {
             codeService.lambdaUpdate()
-                    .eq(ExchangeCode::getId, dto.getCouponId())
+                    .eq(ExchangeCode::getId, dto.getSerialNum())
                     .set(ExchangeCode::getStatus, ExchangeCodeStatus.USED)
                     .set(ExchangeCode::getUserId,dto.getUserId())
                     .update();
@@ -225,6 +235,7 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
         UserCoupon uc = new UserCoupon();
         uc.setCouponId(coupon.getId());
         uc.setUserId(userId);
+        uc.setStatus(com.tianji.promotion.enums.UserCouponStatus.UNUSED);
 
         LocalDateTime beginTime = coupon.getTermBeginTime();
         LocalDateTime endTime = coupon.getTermEndTime();
@@ -236,5 +247,36 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
         uc.setTermEndTime(endTime);
 
         save(uc);
+    }
+
+    @Override
+    public PageDTO<UserCouponVO> queryMyCoupons(UserCouponQuery query) {
+        Long userId = UserContext.getUser();
+        Page<UserCoupon> page = lambdaQuery()
+                .eq(UserCoupon::getUserId, userId)
+                .eq(query.getStatus() != null, UserCoupon::getStatus, query.getStatus())
+                .orderByDesc(UserCoupon::getCreateTime)
+                .page(query.toMpPageDefaultSortByCreateTimeDesc());
+        if (page.getRecords() == null || page.getRecords().isEmpty()) {
+            return PageDTO.empty(page);
+        }
+        List<Long> couponIds = page.getRecords().stream().map(UserCoupon::getCouponId).distinct().collect(Collectors.toList());
+        Map<Long, Coupon> coupons = new HashMap<>();
+        couponMapper.selectBatchIds(couponIds).forEach(c -> coupons.put(c.getId(), c));
+        List<UserCouponVO> result = page.getRecords().stream().map(uc -> {
+            UserCouponVO vo = BeanUtils.toBean(uc, UserCouponVO.class);
+            Coupon coupon = coupons.get(uc.getCouponId());
+            if (coupon != null) {
+                vo.setName(coupon.getName());
+                vo.setSpecific(coupon.getSpecific());
+                vo.setDiscountType(coupon.getDiscountType());
+                vo.setThresholdAmount(coupon.getThresholdAmount());
+                vo.setDiscountValue(coupon.getDiscountValue());
+                vo.setMaxDiscountAmount(coupon.getMaxDiscountAmount());
+                vo.setTermDays(coupon.getTermDays());
+            }
+            return vo;
+        }).collect(Collectors.toList());
+        return PageDTO.of(page, result);
     }
 }

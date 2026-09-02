@@ -28,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import javax.annotation.PostConstruct;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -176,9 +177,17 @@ public class CouponServiceImpl extends ServiceImpl<CouponMapper, Coupon> impleme
         map.put("issueBeginTime", String.valueOf(DateUtils.toEpochMilli(coupon.getIssueBeginTime())));
         map.put("issueEndTime", String.valueOf(DateUtils.toEpochMilli(coupon.getIssueEndTime())));
         map.put("totalNum", String.valueOf(coupon.getTotalNum()));
+        map.put("availableNum", String.valueOf(Math.max(0, coupon.getTotalNum() - coupon.getIssueNum())));
         map.put("userLimit", String.valueOf(coupon.getUserLimit()));
         // 2.写缓存
         redisTemplate.opsForHash().putAll(PromotionConstants.COUPON_CACHE_KEY_PREFIX + coupon.getId(), map);
+    }
+
+    @PostConstruct
+    public void initLocalCouponCache() {
+        // A persistent Docker volume skips /docker-entrypoint-initdb.d after
+        // its first boot, so repopulate the Redis coupon cache on every start.
+        lambdaQuery().eq(Coupon::getStatus, ISSUING).list().forEach(this::cacheCouponInfo);
     }
 
     /**

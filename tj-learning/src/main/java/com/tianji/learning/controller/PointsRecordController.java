@@ -32,4 +32,9 @@ public class PointsRecordController {
     public List<PointsStatisticsVO> queryMyPointsToday(){
         return pointsRecordService.queryMyPointsToday();
     }
+
+    @GetMapping({"", "/"})
+    public int queryMyTotalPoints() {
+        return pointsRecordService.queryMyTotalPoints();
+    }
 }
