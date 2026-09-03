@@ -22,7 +22,7 @@
       <OpenClass
         title="新课推荐"
         class="container"
-        :data="freeClassData"
+        :data="newClassData"
       ></OpenClass>
     </div>
     <!-- 广告位 -->
@@ -34,7 +34,7 @@
       <OpenClass
         title="精品好课"
         class="container bg-wt"
-        :data="freeClassData"
+        :data="goodClassData"
       ></OpenClass>
     </div>
   </div>
@@ -58,6 +58,8 @@ const classCategorys = ref([]);
 const imags = [banner1, banner2, banner3];
 // 直播公开课的数据
 const freeClassData = ref([]);
+const newClassData = ref([]);
+const goodClassData = ref([]);
 
 // mounted生命周期
 onMounted(() => {
@@ -65,6 +67,8 @@ onMounted(() => {
   getClassCategoryData();
   // 获取精品公开课
   getFreeClassListData();
+  getNewClassListData();
+  getGoodClassListData();
 });
 
 /** 方法定义 **/
@@ -99,10 +103,10 @@ const getFreeClassListData = async () => {
 };
 // 新课推荐
 const getNewClassListData = async () => {
-  await getClassCategorys()
+  await getRecommendClassList("new")
     .then((res) => {
       if (res.code == 200) {
-        classCategorys.value = res.data;
+        newClassData.value = res.data;
       } else {
         ElMessage(res.meg);
       }
@@ -113,10 +117,10 @@ const getNewClassListData = async () => {
 };
 // 精品好课
 const getGoodClassListData = async () => {
-  await getClassCategorys()
+  await getRecommendClassList("best")
     .then((res) => {
       if (res.code == 200) {
-        classCategorys.value = res.data;
+        goodClassData.value = res.data;
       } else {
         ElMessage(res.meg);
       }

@@ -7,7 +7,7 @@
         </div>
         <div class="about fx-sb">
           <div class="info">
-            <p>智慧MOOC致力于普及中国最好的教育它与中国一流大学和机构合作提供在线课程</p>
+            <p>知序学堂致力于普及中国最好的教育，与中国一流大学和机构合作提供在线课程</p>
             <p>&#169 online-mooc.com 保留所有权利 -沪ICP备15025210号</p>
           </div>
           <div class="logo">

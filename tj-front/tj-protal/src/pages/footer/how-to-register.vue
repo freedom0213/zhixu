@@ -4,7 +4,7 @@
         <div class="register-hero">
           <div class="hero-text">
             <h1 class="animate-fade-in">如何注册</h1>
-            <p class="animate-slide-up">简单几步，开启您的智慧MOOC学习之旅</p>
+            <p class="animate-slide-up">简单几步，开启您的知序学堂学习之旅</p>
           </div>
         </div>
   
@@ -16,7 +16,7 @@
                 <i class="fa fa-user-plus"></i>
               </div>
               <h3>第一步：进入注册页面</h3>
-              <p>在智慧MOOC首页，点击右上角的“注册”按钮，进入注册页面。</p>
+              <p>在知序学堂首页，点击右上角的“注册”按钮，进入注册页面。</p>
             </div>
             <div class="step-card animate-on-scroll" style="animation-delay: 0.2s">
               <div class="card-icon">
@@ -37,7 +37,7 @@
                 <i class="fa fa-unlock"></i>
               </div>
               <h3>第四步：完成注册</h3>
-              <p>手机号验证成功后，您就可以使用注册的账号登录智慧MOOC了。</p>
+              <p>手机号验证成功后，您就可以使用注册的账号登录知序学堂了。</p>
             </div>
           </div>
         </div>

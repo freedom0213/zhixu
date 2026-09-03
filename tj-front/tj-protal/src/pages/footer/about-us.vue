@@ -4,7 +4,7 @@
       <div class="about-hero">
         <div class="hero-text">
           <h1 class="animate-fade-in">关于我们</h1>
-          <p class="animate-slide-up">智慧MOOC致力于普及中国最好的教育，提供高质量在线课程体验</p>
+          <p class="animate-slide-up">知序学堂致力于普及中国最好的教育，提供高质量在线课程体验</p>
         </div>
       </div>
       
@@ -42,7 +42,7 @@
             <div class="timeline-dot"></div>
             <div class="timeline-content">
               <h3>2015年</h3>
-              <p>智慧MOOC平台正式上线，首批合作高校达10所</p>
+              <p>知序学堂平台正式上线，首批合作高校达10所</p>
             </div>
           </div>
           <div class="timeline-item animate-on-scroll" style="animation-delay: 0.2s">

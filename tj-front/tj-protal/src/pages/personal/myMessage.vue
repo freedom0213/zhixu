@@ -48,11 +48,7 @@
                 @mark-read="markAsRead" @scroll="(e) => handleScroll('other', e)" />
             </div>
           </el-tab-pane>
-          <el-tab-pane :label="`在线群聊`" name="online">
-            <div class="message-list">
-              <WebSocketMessage />
-            </div>
-          </el-tab-pane>
+          <el-tab-pane label="在线群聊（暂未开放）" name="online" disabled />
         </el-tabs>
         <el-dialog v-model="showBlockedUsersDialog" title="屏蔽用户列表">
           <el-table :data="blockedUsers" style="width: 100%" empty-text="暂无屏蔽用户">
@@ -96,7 +92,6 @@ import NotificationMessage from './components/NotificationMessage.vue';
 import { useUserStore } from "@/store"
 import { markMessageAsRead, queryUserInbox, getUnReadCountByType, markAllMessageAsRead, unblockUserConversation ,queryUserConversation} from "../../api/message";
 
-import  WebSocketMessage from './components/WebSocketMessage.vue';
 
 const store = useUserStore()
 const userInfo = ref(store.getUserInfo)
