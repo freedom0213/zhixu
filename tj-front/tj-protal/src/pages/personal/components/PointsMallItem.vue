@@ -1,18 +1,18 @@
 <template>
   <el-card class="item-card" shadow="hover">
     <div class="item-image-container">
-      <img :src="item.imageUrl" :alt="item.itemName" class="item-image" />
+      <img :src="item.imageUrl || item.icon" :alt="displayName" class="item-image" />
       <div v-if="item.stock <= 0" class="sold-out">已售罄</div>
     </div>
     
     <div class="item-content">
-      <h3 class="item-name">{{ item.itemName }}</h3>
-      <p class="item-desc">{{ item.itemDesc }}</p>
+      <h3 class="item-name">{{ displayName }}</h3>
+      <p class="item-desc">{{ item.itemDesc || item.description }}</p>
       
       <div class="item-footer">
         <div class="points-required">
           <span>所需积分：</span>
-          <span class="points">{{ item.pointsRequired }}</span>
+          <span class="points">{{ requiredPoints }}</span>
         </div>
         
         <el-button
@@ -74,6 +74,9 @@ const props = defineProps({
 
 const emit = defineEmits(['exchange'])
 
+const displayName = computed(() => props.item.itemName || props.item.name || '积分商品')
+const requiredPoints = computed(() => Number(props.item.pointsRequired ?? props.item.points ?? 0))
+
 const dialogVisible = ref(false)
 const form = ref({
   address: '',
@@ -81,12 +84,12 @@ const form = ref({
 })
 
 const disabled = computed(() => {
-  return props.item.stock <= 0 || props.currentPoints < props.item.pointsRequired
+  return props.item.stock <= 0 || props.currentPoints < requiredPoints.value
 })
 
 const buttonText = computed(() => {
   if (props.item.stock <= 0) return '已售罄'
-  if (props.currentPoints < props.item.pointsRequired) return '积分不足'
+  if (props.currentPoints < requiredPoints.value) return '积分不足'
   return '立即兑换'
 })
 

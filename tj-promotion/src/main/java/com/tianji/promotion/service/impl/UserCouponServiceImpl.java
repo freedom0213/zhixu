@@ -173,6 +173,9 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
                 throw new BizIllegalException("兑换码不存在！");
             }
             Coupon coupon = queryCouponByCache(couponId);
+            if (coupon == null) {
+                throw new BizIllegalException("优惠券不存在或尚未初始化");
+            }
             // 4.是否过期
             LocalDateTime now = LocalDateTime.now();
             if (coupon != null && (now.isAfter(coupon.getIssueEndTime()) || now.isBefore(coupon.getIssueBeginTime()))) {
@@ -186,6 +189,7 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
             Long count = redisTemplate.opsForHash().increment(key, userId.toString(), 1);
             // 5.2.校验限领数量
             if(count > coupon.getUserLimit()){
+                redisTemplate.opsForHash().increment(key, userId.toString(), -1);
                 throw new BadRequestException("超出领取数量");
             }
             // 6.发送MQ消息通知 通知生成用户劵并修改优惠劵状态
@@ -239,9 +243,11 @@ public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCou
 
         LocalDateTime beginTime = coupon.getTermBeginTime();
         LocalDateTime endTime = coupon.getTermEndTime();
-        if(coupon.getIssueBeginTime() == null){
+        if(beginTime == null){
             beginTime = LocalDateTime.now();
-            endTime = beginTime.plusDays(coupon.getTermDays());
+        }
+        if(endTime == null){
+            endTime = beginTime.plusDays(coupon.getTermDays() == null ? 30 : coupon.getTermDays());
         }
         uc.setTermBeginTime(beginTime);
         uc.setTermEndTime(endTime);

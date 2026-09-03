@@ -16,7 +16,7 @@
                 <i class="fa fa-search"></i>
               </div>
               <h3>第一步：浏览课程目录</h3>
-              <p>登录智慧MOOC后，在首页或课程目录中浏览各类课程。</p>
+              <p>登录知序学堂后，在首页或课程目录中浏览各类课程。</p>
             </div>
             <div class="step-card animate-on-scroll" style="animation-delay: 0.2s">
               <div class="card-icon">

@@ -1,6 +1,7 @@
 package com.tianji.learning.service.impl;
 
 import com.baomidou.mybatisplus.extension.plugins.inner.DynamicTableNameInnerInterceptor;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.tianji.api.client.user.UserClient;
 import com.tianji.api.dto.user.UserDTO;
 import com.tianji.common.utils.CollUtils;
@@ -13,6 +14,7 @@ import com.tianji.learning.domain.vo.PointsBoardItemVO;
 import com.tianji.learning.domain.vo.PointsBoardVO;
 import com.tianji.learning.mapper.PointsBoardMapper;
 import com.tianji.learning.service.IPointsBoardService;
+import com.tianji.learning.utils.TableInfoContext;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.BoundZSetOperations;
@@ -107,10 +109,21 @@ public class PointsBoardServiceImpl extends ServiceImpl<PointsBoardMapper, Point
     public void createPointsBoardTableBySeason(Integer season) {
         getBaseMapper().createPointsBoardTable(POINTS_BOARD_TABLE_PREFIX + season);
     }
-    //TODO
     private List<PointsBoard> queryHistoryBoardList(PointsBoardQuery query) {
-
-        return null;
+        if (query.getSeason() == null || query.getSeason() <= 0) {
+            return CollUtils.emptyList();
+        }
+        try {
+            TableInfoContext.setInfo(POINTS_BOARD_TABLE_PREFIX + query.getSeason());
+            Page<PointsBoard> page = page(query.toMpPage());
+            if (CollUtils.isEmpty(page.getRecords())) {
+                return CollUtils.emptyList();
+            }
+            page.getRecords().forEach(board -> board.setRank(board.getId().intValue()));
+            return page.getRecords();
+        } finally {
+            TableInfoContext.remove();
+        }
     }
 
     public List<PointsBoard> queryCurrentBoardList(String key, @Min(value = 1, message = "页码不能小于1") Integer pageNo, @Min(value = 1, message = "每页查询数量不能小于1") Integer pageSize) {
@@ -157,9 +170,20 @@ public class PointsBoardServiceImpl extends ServiceImpl<PointsBoardMapper, Point
         board.setRank(rank == null ? 0 : rank.intValue() + 1);
         return board;
     }
-    //TODO
     private PointsBoard queryMyHistoryBoard(Long season) {
-        return null;
+        if (season == null || season <= 0 || UserContext.getUser() == null) {
+            return null;
+        }
+        try {
+            TableInfoContext.setInfo(POINTS_BOARD_TABLE_PREFIX + season);
+            return lambdaQuery()
+                    .eq(PointsBoard::getUserId, UserContext.getUser())
+                    .oneOpt()
+                    .map(board -> board.setRank(board.getId().intValue()))
+                    .orElse(null);
+        } finally {
+            TableInfoContext.remove();
+        }
 
     }
 

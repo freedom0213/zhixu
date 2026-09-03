@@ -5,14 +5,14 @@
       <header class="hero">
         <div class="hero-content">
           <h1 class="animate-fade-in">核心管理团队</h1>
-          <p class="animate-slide-up">汇聚教育、技术与运营领域专家，引领智慧MOOC平台持续创新</p>
+          <p class="animate-slide-up">汇聚教育、技术与运营领域专家，引领知序学堂平台持续创新</p>
         </div>
       </header>
       
       <!-- 团队简介 -->
       <section class="team-intro section-padding">
         <div class="intro-content">
-          <p>智慧MOOC管理团队由教育行业资深专家、技术精英和运营骨干组成，平均拥有15年以上行业经验，曾任职于985高校、头部互联网企业和知名教育机构，致力于推动优质教育资源的数字化与普及化。</p>
+          <p>知序学堂管理团队由教育行业资深专家、技术精英和运营骨干组成，平均拥有15年以上行业经验，曾任职于985高校、头部互联网企业和知名教育机构，致力于推动优质教育资源的数字化与普及化。</p>
         </div>
       </section>
       
@@ -88,7 +88,7 @@ const managementMembers = reactive([
     experience: [
       '2010-2018 某985高校 教务处处长',
       '2018-2021 教育部在线教育研究中心 研究员',
-      '2021至今 智慧MOOC 创始人兼CEO'
+      '2021至今 知序学堂 创始人兼CEO'
     ]
   },
   {
@@ -100,7 +100,7 @@ const managementMembers = reactive([
     experience: [
       '2012-2016 百度 高级工程师',
       '2016-2020 阿里巴巴 资深技术专家',
-      '2020至今 智慧MOOC 技术总监'
+      '2020至今 知序学堂 技术总监'
     ]
   },
   {
@@ -112,7 +112,7 @@ const managementMembers = reactive([
     experience: [
       '2014-2017 某教育出版社 编辑',
       '2017-2021 网易云课堂 课程负责人',
-      '2021至今 智慧MOOC 课程总监'
+      '2021至今 知序学堂 课程总监'
     ]
   },
   {
@@ -124,7 +124,7 @@ const managementMembers = reactive([
     experience: [
       '2015-2018 新浪教育 运营主管',
       '2018-2021 腾讯教育 运营负责人',
-      '2021至今 智慧MOOC 运营总监'
+      '2021至今 知序学堂 运营总监'
     ]
   }
 ])

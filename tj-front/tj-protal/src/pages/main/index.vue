@@ -19,7 +19,7 @@
     </div>
     <!-- 新课推荐 -->
     <div class="pd-tp-30 bg-wt">
-      <OpenClass title="新课推荐" class="container" :data="freeClassData"></OpenClass>
+      <OpenClass title="新课推荐" class="container" :data="newClassData"></OpenClass>
     </div>
     <!-- 广告位 -->
     <div class="globalTopBanner" style="display: block;">
