@@ -47,6 +47,12 @@ public class KnowledgeService {
         return result;
     }
 
+    public String content(String id) throws IOException {
+        String value = documents.get(id);
+        if (value == null) throw new NoSuchFileException(id);
+        return value;
+    }
+
     public void delete(String id) throws IOException { documents.remove(id); Files.deleteIfExists(Paths.get(properties.getDataDir(), "documents", id)); }
 
     public String chat(String question) {
