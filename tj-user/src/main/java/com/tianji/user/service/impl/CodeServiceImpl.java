@@ -10,6 +10,7 @@ import com.tianji.message.domain.dto.SmsInfoDTO;
 import com.tianji.user.service.ICodeService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -30,8 +31,12 @@ public class CodeServiceImpl implements ICodeService {
     @Autowired
     private AsyncSmsClient asyncSmsClient;
 
+    /** Local demo mode avoids external SMS credentials while retaining the production adapter. */
+    @Value("${tj.sms.mock:true}")
+    private boolean mockSms;
+
     @Override
-    public void sendVerifyCode(String phone) {
+    public String sendVerifyCode(String phone) {
         String key = USER_VERIFY_CODE_KEY + phone;
         // 1.查看code是否存在
         String code = stringRedisTemplate.opsForValue().get(key);
@@ -43,8 +48,13 @@ public class CodeServiceImpl implements ICodeService {
                     .set(USER_VERIFY_CODE_KEY + phone, code, USER_VERIFY_CODE_TTL);
 
         }
-        // 4.发送短信
-        log.debug("发送短信验证码：{}", code);
+        // 4. Send through the configured provider in production. In local mode the
+        // generated value is returned by the controller for browser-only testing.
+        log.debug("短信验证码：{}", code);
+        if (mockSms) {
+            log.info("本地短信 Mock 已生成验证码，手机号={}，验证码={}", phone, code);
+            return code;
+        }
         SmsInfoDTO info = new SmsInfoDTO();
         info.setPhones(CollUtils.singletonList(phone));
         info.setTemplateCode(SmsTemplate.VERIFY_CODE.toString());
@@ -52,6 +62,7 @@ public class CodeServiceImpl implements ICodeService {
         params.put(VERIFY_CODE_PARAM_NAME, code);
         info.setTemplateParams(params);
         asyncSmsClient.sendMessage(info);
+        return null;
     }
 
     @Override

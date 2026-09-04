@@ -32,7 +32,7 @@ public class UserDetail implements Serializable {
     /**
      * 关联用户id
      */
-    @TableId(value = "id", type = IdType.NONE)
+    @TableId(value = "id", type = IdType.INPUT)
     private Long id;
 
     /**

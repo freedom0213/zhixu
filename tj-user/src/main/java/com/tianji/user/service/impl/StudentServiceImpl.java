@@ -1,6 +1,7 @@
 package com.tianji.user.service.impl;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.core.incrementer.DefaultIdentifierGenerator;
 import com.tianji.api.client.trade.TradeClient;
 import com.tianji.api.dto.user.UserDTO;
 import com.tianji.common.domain.dto.PageDTO;
@@ -47,10 +48,21 @@ public class StudentServiceImpl implements IStudentService {
     public void saveStudent(StudentFormDTO studentFormDTO) {
         // 1.新增用户账号
         User user = new User();
+        // The user_detail row reuses this key; assigning it explicitly keeps the
+        // registration flow independent of JDBC generated-key configuration.
+        user.setId(new DefaultIdentifierGenerator().nextId(user));
         user.setCellPhone(studentFormDTO.getCellPhone());
         user.setPassword(studentFormDTO.getPassword());
         user.setType(UserType.STUDENT);
         userService.addUserByPhone(user, studentFormDTO.getCode());
+
+        // Older local schemas/configurations may not propagate the generated key
+        // back to MyBatis. Resolve it by the unique phone before creating details.
+        if (user.getId() == null) {
+            user.setId(userService.lambdaQuery()
+                    .eq(User::getCellPhone, studentFormDTO.getCellPhone())
+                    .one().getId());
+        }
 
         // 2.新增学员详情
         UserDetail student = new UserDetail();

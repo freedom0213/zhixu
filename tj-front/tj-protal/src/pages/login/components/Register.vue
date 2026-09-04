@@ -122,6 +122,10 @@ const verifycodeHandle = async() => {
   await verifycode({cellPhone:fromData.cellPhone})
     .then(async res => {
       if (res.code == 200) {
+        if (res.data?.mock && res.data.code) {
+          fromData.code = res.data.code;
+          ElMessage.info(`本地演示验证码：${res.data.code}`);
+        }
         ElMessage({
           message: '验证码发送成功',
           type: 'success'

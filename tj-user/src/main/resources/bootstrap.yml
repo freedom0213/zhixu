@@ -38,6 +38,7 @@ tj:
       enable: true
       excludeLoginPaths:
         - /students/register
+        - /code/verifycode
         - /users/detail/{isStaff}
         - /users/list
         - GET:/users/{id}
@@ -46,3 +47,7 @@ tj:
         - /users/me
   jdbc:
     database: tj_user
+  sms:
+    # Local Docker demo uses a Redis-backed mock. Set TJ_SMS_MOCK=false in production.
+    # TODO: configure real Aliyun/Tencent credentials in message-service for production.
+    mock: ${TJ_SMS_MOCK:true}
