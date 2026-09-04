@@ -25,6 +25,7 @@
             {{ isSending ? `${countdown}秒后重发` : '发送验证码' }}
           </span> 
         </div>
+        <div v-if="mockCode" class="mock-code">本地演示验证码：{{ mockCode }}</div>
       </el-form-item>
       <el-form-item class="marg-bt-15">
         <div class="bt" @click="submitForm(formRef)">注册</div>
@@ -58,6 +59,7 @@ const fromData = reactive({
 // 新增状态变量
 const isSending = ref(false); // 是否正在倒计时
 const countdown = ref(60);    // 倒计时秒数
+const mockCode = ref('');
 let timer = null;             // 定时器引用
 
 // 手机号效验
@@ -124,6 +126,7 @@ const verifycodeHandle = async() => {
       if (res.code == 200) {
         if (res.data?.mock && res.data.code) {
           fromData.code = res.data.code;
+          mockCode.value = res.data.code;
           ElMessage.info(`本地演示验证码：${res.data.code}`);
         }
         ElMessage({
@@ -211,6 +214,12 @@ const goLogin = () => {
         background-color: #409eff;
         color: #fff;
       }
+    }
+    .mock-code {
+      margin-top: 6px;
+      color: #67c23a;
+      font-size: 13px;
+      text-align: right;
     }
 }
 </style>
