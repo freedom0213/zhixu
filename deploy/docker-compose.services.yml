@@ -35,6 +35,18 @@ x-java-service: &java-service
     dockerfile: deploy/service.Dockerfile
 
 services:
+  frontend:
+    build:
+      context: ../tj-front/tj-protal
+      dockerfile: Dockerfile
+    image: tianji-local-frontend
+    restart: unless-stopped
+    depends_on:
+      gateway-service:
+        condition: service_started
+    ports:
+      - "18082:80"
+
   auth-service:
     <<: *java-service
     build:
