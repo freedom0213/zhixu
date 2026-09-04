@@ -76,8 +76,7 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         // 2.1.计算订单金额
         Integer totalAmount = courseInfos.stream()
                 .map(CourseSimpleInfoDTO::getPrice).reduce(Integer::sum).orElse(0);
-        // TODO 2.2.计算优惠金额
-        order.setDiscountAmount(0);
+        order.setDiscountAmount(calculateDiscount(totalAmount, placeOrderDTO.getCouponIds()));
         Integer realAmount = totalAmount - order.getDiscountAmount();
         // 2.3.封装其它信息
         order.setUserId(userId);
@@ -91,8 +90,13 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
 
         // 3.封装订单详情
         List<OrderDetail> orderDetails = new ArrayList<>(courseInfos.size());
-        for (CourseSimpleInfoDTO courseInfo : courseInfos) {
-            orderDetails.add(packageOrderDetail(courseInfo, order));
+        for (int i = 0; i < courseInfos.size(); i++) {
+            OrderDetail detail = packageOrderDetail(courseInfos.get(i), order);
+            if (i == 0 && order.getDiscountAmount() > 0) {
+                detail.setDiscountAmount(order.getDiscountAmount());
+                detail.setRealPayAmount(Math.max(0, detail.getPrice() - detail.getDiscountAmount()));
+            }
+            orderDetails.add(detail);
         }
 
         // 4.写入数据库
@@ -108,6 +112,19 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                 .status(order.getStatus())
                 .payOutTime(LocalDateTime.now().plusMinutes(tradeProperties.getPayOrderTTLMinutes()))
                 .build();
+    }
+
+    private int calculateDiscount(Integer amount, List<Long> couponIds) {
+        if (couponIds == null || couponIds.isEmpty()) return 0;
+        int discount = 0;
+        for (Map<String, Object> coupon : promotionClient.queryAvailableCoupons(amount)) {
+            Object id = coupon.get("couponId");
+            if (id != null && couponIds.contains(Long.valueOf(String.valueOf(id)))) {
+                Object value = coupon.get("discountAmount");
+                if (value instanceof Number) discount += ((Number) value).intValue();
+            }
+        }
+        return Math.min(amount, discount);
     }
 
     private List<CourseSimpleInfoDTO> getOnShelfCourse(List<Long> courseIds) {
