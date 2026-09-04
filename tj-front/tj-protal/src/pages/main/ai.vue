@@ -74,7 +74,7 @@
 <script setup>
 import { ref, onMounted, nextTick } from 'vue';
 import { ElMessage } from 'element-plus';
-import { getUserSessionList, getChatRecord } from '@/api/ai.js';
+import { getUserSessionList, getChatRecord, chatByMarkdownDoc, memoryChatRedis } from '@/api/ai.js';
 import Breadcrumb from '@/components/Breadcrumb.vue';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import VueMarkdown from 'vue3-markdown-it';
@@ -147,8 +147,8 @@ const fetchUserSessionList = async () => {
     try {
         const sessions = await getUserSessionList();
         userSessionList.value = sessions.data;
-        if (sessions.length > 0 && !selectedSessionId.value) {
-            selectSession(sessions[0].sessionId);
+        if (sessions.data?.length > 0 && !selectedSessionId.value) {
+            selectSession(sessions.data[0].sessionId);
         }
     } catch (error) {
         console.error('获取用户会话列表失败:', error);
@@ -253,7 +253,7 @@ const sendMessage = async () => {
 
     await scrollToBottom();
     try {
-        isStreaming.value = true;
+        isStreaming.value = false;
         // 添加占位消息
         chatHistory.value.push({
             type: 'assistant',
@@ -271,86 +271,16 @@ const sendMessage = async () => {
         let thinkingContent = '';
         let inThinkingTag = false;
 
-        // 构建查询参数
-        const queryParams = new URLSearchParams();
-        queryParams.append('message', userMessage);
-        queryParams.append('sessionId', selectedSessionId.value);
-
-        abortController.value = new AbortController(); // 每次请求前重置 abortController
-        // 获取当前模式对应的API前缀
-        const currentApiPrefix = API_CONFIG[currentMode.value].prefix;
-        await fetchEventSource(`${currentApiPrefix}/?${queryParams.toString()}`, {
-            method: 'GET',
-            headers: {
-                // 'Accept': 'text/event-stream',
-                "authorization": TOKEN
-            },
-            signal: abortController.value.signal,
-            openWhenHidden: true, // 保持连接即使页面不可见
-
-            onopen(response) {
-                if (!response.ok || response.headers.get('content-type') !== 'text/event-stream') {
-                    throw new Error(`请求失败: ${response.status}`);
-                }
-            },
-
-            onmessage(msg) {
-                console.log('接收到数据:', msg.data)
-                // 后端主动关闭时会发送[DONE]事件
-                if (msg.data === '[DONE]') {
-                    assistantMessage.isTyping = false;
-                    isStreaming.value = false;
-                    abortController.value.abort(); // 主动关闭连接
-                    console.log('SSE 数据接收完成');
-                    scrollToBottom();
-                    return;
-                }
-
-                if (msg.data) {
-                    if (msg.data === '<think>') {
-                        inThinkingTag = true;
-                    } else if (msg.data === '</think>') {
-                        inThinkingTag = false;
-                        if (thinkingContent.trim() === '') {
-                            thinkingContent = '';
-                        }
-                        assistantMessage.thinkingContent = thinkingContent;
-                        thinkingContent = '';
-                    } else if (inThinkingTag) {
-                        thinkingContent += msg.data;
-                    } else {
-                        content += msg.data;
-                        const processed = processContent(content);
-                        assistantMessage.processedContent = processed.content;
-                        assistantMessage.showMarkdown = processed.showMarkdown;
-                    }
-                    scrollToBottom();
-                }
-            },
-
-            onclose() {
-                // 连接关闭时清理状态
-                assistantMessage.isTyping = false;
-                isStreaming.value = false;
-                scrollToBottom();
-            },
-
-            onerror(err) {
-                console.error('流式传输错误:', err);
-                // 不自动重试
-                assistantMessage.isTyping = false;
-                isStreaming.value = false;
-                if (abortController.value) {
-                    abortController.value.abort();
-                }
-
-                // 只有非主动中断的错误才显示
-                if (err.name !== 'AbortError') {
-                    assistantMessage.content = '对话出错: ' + (err.message || '连接中断');
-                }
-                scrollToBottom();
-            }
-        });
+        const request = currentMode.value === 'knowledge' ? chatByMarkdownDoc : memoryChatRedis;
+        const response = await request({ message: userMessage, sessionId: selectedSessionId.value });
+        const answer = response?.data?.content || response?.content || response?.data?.answer || '';
+        if (!answer) throw new Error(response?.msg || 'AI 未返回内容');
+        const processed = processContent(answer);
+        assistantMessage.content = answer;
+        assistantMessage.processedContent = processed.content;
+        assistantMessage.showMarkdown = processed.showMarkdown;
+        assistantMessage.thinkingContent = processed.thinkingContent;
+        assistantMessage.isTyping = false;
     } catch (error) {
         console.error('请求失败:', error);
         if (error.name !== 'AbortError') {
