@@ -11,7 +11,7 @@
                 <div class="session-content">
                     <!-- 文件名称 -->
                     <div class="session-name">
-                        {{ file.fileName }}
+                        {{ file.name || file.fileName || '未命名文件' }}
                     </div>
                 </div>
 

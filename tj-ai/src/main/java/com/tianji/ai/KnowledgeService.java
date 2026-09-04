@@ -15,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class KnowledgeService {
     private final AiProperties properties;
     private final Map<String, String> documents = new ConcurrentHashMap<>();
+    private final Map<String, Map<String, Object>> sessions = new ConcurrentHashMap<>();
     private final ChatLanguageModel model;
 
     public KnowledgeService(AiProperties properties) {
@@ -43,7 +44,11 @@ public class KnowledgeService {
 
     public List<Map<String, Object>> list() {
         List<Map<String, Object>> result = new ArrayList<>();
-        documents.forEach((name, text) -> result.add(Map.of("id", name, "name", name.substring(name.indexOf('-') + 1), "size", text.length())));
+        documents.forEach((name, text) -> {
+            int separator = name.length() > 37 && name.charAt(36) == '-' ? 36 : name.indexOf('-');
+            String displayName = separator >= 0 && separator + 1 < name.length() ? name.substring(separator + 1) : name;
+            result.add(Map.of("id", name, "name", displayName, "size", text.length()));
+        });
         return result;
     }
 
@@ -54,6 +59,18 @@ public class KnowledgeService {
     }
 
     public void delete(String id) throws IOException { documents.remove(id); Files.deleteIfExists(Paths.get(properties.getDataDir(), "documents", id)); }
+
+    public List<Map<String, Object>> sessions() { return new ArrayList<>(sessions.values()); }
+    public Map<String, Object> createSession(String name, String tag) {
+        Map<String, Object> session = new LinkedHashMap<>();
+        String id = UUID.randomUUID().toString();
+        session.put("id", id); session.put("sessionId", id);
+        session.put("name", name); session.put("tag", tag); sessions.put((String) session.get("id"), session); return session;
+    }
+    public void deleteSession(String id) { sessions.remove(id); }
+    public Map<String, Object> updateSession(String id, String name, String tag) {
+        Map<String, Object> s = sessions.get(id); if (s != null) { s.put("name", name); s.put("tag", tag); } return s;
+    }
 
     public String chat(String question) {
         String context = documents.values().stream().flatMap(t -> Arrays.stream(t.split("\\n\\s*\\n")))
