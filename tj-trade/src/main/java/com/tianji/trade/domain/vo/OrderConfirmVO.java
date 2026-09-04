@@ -5,6 +5,7 @@ import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
 import java.util.List;
+import java.util.Map;
 
 @Data
 @ApiModel(description = "订单确认页信息")
@@ -17,4 +18,5 @@ public class OrderConfirmVO {
     private Integer discountAmount;
     @ApiModelProperty("订单中包含的课程")
     private List<OrderCourseVO> courses;
+    private List<Map<String, Object>> discounts;
 }

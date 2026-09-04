@@ -12,8 +12,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import org.springframework.web.bind.annotation.RestController;
+import java.util.*;
 
 /**
  * <p>
@@ -47,6 +49,11 @@ public class UserCouponController {
     @ApiOperation("查询我的优惠券")
     public PageDTO<UserCouponVO> queryMyCoupons(UserCouponQuery query) {
         return userCouponService.queryMyCoupons(query);
+    }
+
+    @GetMapping("/available")
+    public List<Map<String, Object>> queryAvailableCoupons(@RequestParam Integer amount) {
+        return userCouponService.queryAvailableCoupons(amount);
     }
 
 

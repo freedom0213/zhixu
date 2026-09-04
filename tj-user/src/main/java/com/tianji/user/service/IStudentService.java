@@ -4,6 +4,7 @@ import com.tianji.common.domain.dto.PageDTO;
 import com.tianji.user.domain.dto.StudentFormDTO;
 import com.tianji.user.domain.query.UserPageQuery;
 import com.tianji.user.domain.vo.StudentPageVo;
+import com.tianji.api.dto.user.UserDTO;
 
 /**
  * <p>
@@ -18,6 +19,8 @@ public interface IStudentService {
     void saveStudent(StudentFormDTO studentFormDTO);
 
     void updateMyPassword(StudentFormDTO studentFormDTO);
+
+    void updateUser(UserDTO userDTO);
 
     PageDTO<StudentPageVo> queryStudentPage(UserPageQuery pageQuery);
 }

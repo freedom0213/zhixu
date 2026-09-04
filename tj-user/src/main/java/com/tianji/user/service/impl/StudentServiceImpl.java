@@ -2,6 +2,7 @@ package com.tianji.user.service.impl;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.tianji.api.client.trade.TradeClient;
+import com.tianji.api.dto.user.UserDTO;
 import com.tianji.common.domain.dto.PageDTO;
 import com.tianji.common.enums.UserType;
 import com.tianji.common.utils.BeanUtils;
@@ -64,6 +65,12 @@ public class StudentServiceImpl implements IStudentService {
         userService.updatePasswordByPhone(
                 studentFormDTO.getCellPhone(), studentFormDTO.getCode(), studentFormDTO.getPassword()
         );
+    }
+
+    @Override
+    public void updateUser(UserDTO userDTO) {
+        userDTO.setId(com.tianji.common.utils.UserContext.getUser());
+        userService.updateUser(userDTO);
     }
 
     @Override

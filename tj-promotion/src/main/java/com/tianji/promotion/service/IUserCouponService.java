@@ -8,6 +8,8 @@ import com.tianji.promotion.domain.vo.UserCouponVO;
 import com.tianji.promotion.domain.query.UserCouponQuery;
 import com.baomidou.mybatisplus.extension.service.IService;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.List;
+import java.util.Map;
 
 /**
  * <p>
@@ -26,4 +28,6 @@ public interface IUserCouponService extends IService<UserCoupon> {
     void checkAndCreateUserCoupon(UserCouponDTO uc);
 
     PageDTO<UserCouponVO> queryMyCoupons(UserCouponQuery query);
+
+    List<Map<String, Object>> queryAvailableCoupons(Integer amount);
 }
