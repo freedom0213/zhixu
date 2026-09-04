@@ -153,12 +153,16 @@ const handleScroll = () => {
 .session-content {
     flex-grow: 1;
     margin-right: 15px;
+    min-width: 0;
 }
 
 .session-name {
     font-size: 14px;
     font-weight: 500;
     color: #303133;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .button-group {

@@ -73,14 +73,24 @@ public class KnowledgeService {
     }
 
     public String chat(String question) {
+        String query = question == null ? "" : question.trim();
         String context = documents.values().stream().flatMap(t -> Arrays.stream(t.split("\\n\\s*\\n")))
-                .filter(s -> containsKeyword(s, question)).limit(5).reduce((a, b) -> a + "\n\n" + b).orElse("");
+                .filter(s -> containsKeyword(s, query)).limit(5).reduce((a, b) -> a + "\n\n" + b).orElse("");
+        if (context.isEmpty() && query.toLowerCase(Locale.ROOT).contains("java")) {
+            context = documents.values().stream().filter(t -> t.toLowerCase(Locale.ROOT).contains("java"))
+                    .flatMap(t -> Arrays.stream(t.split("\\n\\s*\\n"))).limit(5)
+                    .reduce((a, b) -> a + "\n\n" + b).orElse("");
+        }
         if (model == null) return context.isEmpty() ? "本地 AI 尚未配置 DeepSeek API Key，请先上传相关文档并配置密钥。" : "已检索到相关知识片段：\n\n" + context;
         return model.generate("你是知序学堂课程助手。请仅根据参考资料回答问题，不确定时明确说明。\n参考资料：\n" + context + "\n问题：" + question);
     }
 
     private boolean containsKeyword(String text, String question) {
-        for (String token : question.split("\\s+|[，。！？、]")) if (token.length() > 1 && text.contains(token)) return true;
+        String normalizedText = text.toLowerCase(Locale.ROOT);
+        for (String token : question.toLowerCase(Locale.ROOT).split("\\s+|[，。！？、]")) {
+            if (token.length() > 1 && normalizedText.contains(token)) return true;
+            for (int i = 0; i + 1 < token.length(); i++) if (normalizedText.contains(token.substring(i, i + 2))) return true;
+        }
         return false;
     }
 }
