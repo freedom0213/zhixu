@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: ai-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: ${NACOS_SERVER_ADDR:localhost:8848}

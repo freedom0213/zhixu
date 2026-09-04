@@ -177,6 +177,28 @@ services:
         JAR_FILE: tj-data/target/tj-data.jar
     ports: ["8093:8093"]
 
+  ai-service:
+    <<: *java-service
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      NACOS_SERVER_ADDR: nacos:8848
+      NACOS_NAMESPACE: ""
+      TJ_JDBC_HOST: mysql
+      TJ_REDIS_HOST: redis
+      TJ_MQ_HOST: rabbitmq
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-v4-flash}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      TJ_AI_DATA_DIR: /data/ai
+    build:
+      context: ..
+      dockerfile: deploy/service.Dockerfile
+      args:
+        JAR_FILE: tj-ai/target/tj-ai.jar
+    volumes:
+      - ../data/ai:/data/ai
+    ports: ["8094:8094"]
+
   gateway-service:
     <<: *java-service
     build:
