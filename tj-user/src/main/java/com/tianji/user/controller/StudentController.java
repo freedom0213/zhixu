@@ -5,6 +5,7 @@ import com.tianji.common.domain.dto.PageDTO;
 import com.tianji.user.domain.dto.StudentFormDTO;
 import com.tianji.user.domain.query.UserPageQuery;
 import com.tianji.user.domain.vo.StudentPageVo;
+import com.tianji.api.dto.user.UserDTO;
 import com.tianji.user.service.IStudentService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -37,6 +38,12 @@ public class StudentController {
     @PostMapping("/register")
     public void registerStudent(@RequestBody StudentFormDTO studentFormDTO) {
         studentService.saveStudent(studentFormDTO);
+    }
+
+    @ApiOperation("更新当前学员基本信息")
+    @PutMapping
+    public void updateStudent(@RequestBody UserDTO userDTO) {
+        studentService.updateUser(userDTO);
     }
 
     @ApiOperation("修改学员密码")

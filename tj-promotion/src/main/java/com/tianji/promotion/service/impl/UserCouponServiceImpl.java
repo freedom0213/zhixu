@@ -32,7 +32,12 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.List;
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.LinkedHashMap;
+import com.tianji.promotion.enums.UserCouponStatus;
 
 /**
  * <p>
@@ -47,6 +52,22 @@ import java.util.stream.Collectors;
 public class UserCouponServiceImpl extends ServiceImpl<UserCouponMapper, UserCoupon> implements IUserCouponService {
 
     private final CouponMapper couponMapper;
+
+    @Override
+    public List<Map<String, Object>> queryAvailableCoupons(Integer amount) {
+        List<UserCoupon> records = lambdaQuery().eq(UserCoupon::getUserId, UserContext.getUser())
+                .eq(UserCoupon::getStatus, UserCouponStatus.UNUSED).gt(UserCoupon::getTermEndTime, LocalDateTime.now()).list();
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (UserCoupon record : records) {
+            Coupon c = couponMapper.selectById(record.getCouponId());
+            if (c == null || (c.getThresholdAmount() != null && amount < c.getThresholdAmount())) continue;
+            int discount = c.getDiscountType() == com.tianji.promotion.enums.DiscountType.NO_THRESHOLD ? c.getDiscountValue() : c.getDiscountValue();
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("ids", Collections.singletonList(record.getId())); item.put("rules", Collections.singletonList(c.getName())); item.put("discountAmount", discount); item.put("couponId", record.getId());
+            result.add(item);
+        }
+        return result;
+    }
 
     private final IExchangeCodeService codeService;
 
