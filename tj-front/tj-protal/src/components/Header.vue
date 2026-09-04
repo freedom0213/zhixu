@@ -67,7 +67,7 @@
         </div>
         <!-- 登录注册 - start -->
         <div class="fx-al-ct" v-if="userInfo && userInfo.name">
-          <img class="headIcon" :src="userInfo.icon" :onerror="onerrorImg" alt="">
+          <img class="headIcon" :src="headerIcon" :onerror="onerrorImg" alt="">
           <div>{{ userInfo.name }}</div>
           <!-- <div class="font-bt2 pd-lf-10" @click="() => $router.push('/login')"> 退出 </div> -->
         </div>
@@ -156,12 +156,18 @@ import { debounce } from 'lodash'; // 引入防抖函数
 
 const store = useUserStore();
 const userInfo = ref()
+const headerIcon = ref(defaultImage)
 const isToken = sessionStorage.getItem('token') ? true : false
 const input = ref('');
 const route = useRoute()
 const userStore = getToken();
 const dataCache = dataCacheStore();
 const notReadCount = ref(0) // 未读消息数据
+
+const syncHeaderIcon = (info) => {
+  if (!info) return;
+  headerIcon.value = localStorage.getItem(`tianji:avatar:${info.id}`) || info.icon || defaultImage;
+};
 const courseClass = ref([]) // 分类数据
 const isShow = ref(false)  // 分类展示
 const learnClassInfo = ref(null) // 我真正学习的课程信息-学习中心展示
@@ -333,6 +339,7 @@ onBeforeMount(async () => {
       let res = await getUserInfo();
       if (res.code === 200 && !!res.data) {
         userInfo.value = res.data
+        syncHeaderIcon(res.data)
         // 记录到store 并调转到首页
         store.setUserInfo(res.data);
       }
@@ -341,6 +348,7 @@ onBeforeMount(async () => {
     }
   } else {
     userInfo.value = ui
+    syncHeaderIcon(ui)
   }
 
   courseClass.value = dataCache.getCourseClassDataes
@@ -457,7 +465,7 @@ const getCourseClassHandle = async () => {
 
 // 默认头像
 const onerrorImg = () => {
-  userInfo.value.icon = defaultImage;
+  headerIcon.value = defaultImage;
 }
 
 // 搜索事件
