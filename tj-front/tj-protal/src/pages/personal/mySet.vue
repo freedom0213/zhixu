@@ -56,6 +56,7 @@
         <el-upload
           class="avatar-uploader"
           :action="actions"
+          :before-upload="handleAvatarBeforeUpload"
           :show-file-list="false"
           :on-success="handleAvatarSuccess"
           :headers="uploadHeaders"
@@ -290,7 +291,29 @@ const handleRegionChange = (value) => {
 };
 
 // 图片上传
-const imageUrl = ref(user.icon);
+const avatarStorageKey = `tianji:avatar:${user.id}`;
+const imageUrl = ref(localStorage.getItem(avatarStorageKey) || user.icon);
+// Local demo mode keeps the selected image in this browser. Production can
+// remove this hook and use the existing /ms/files OSS upload endpoint.
+const handleAvatarBeforeUpload = (file) => {
+  if (!file.type.startsWith('image/')) {
+    ElMessage.error('请选择图片文件');
+    return false;
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    ElMessage.error('图片大小不能超过 2MB');
+    return false;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    imageUrl.value = reader.result;
+    localStorage.setItem(avatarStorageKey, reader.result);
+    ElMessage.success('头像已更新（本地演示）');
+  };
+  reader.onerror = () => ElMessage.error('图片读取失败，请重试');
+  reader.readAsDataURL(file);
+  return false;
+};
 const handleAvatarSuccess = (res, file) => {
   if (res.code == 200) {
     imageUrl.value = URL.createObjectURL(file.raw);
