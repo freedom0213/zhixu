@@ -22,4 +22,22 @@ public class AiController {
     @DeleteMapping("/file/{id}") public Map<String,Object> delete(@PathVariable String id) throws IOException { knowledge.delete(id); return ok(null); }
     @GetMapping("/file/chat") public Map<String,Object> chat(@RequestParam(required = false) String question, @RequestParam(required = false) String message) { return ok(Map.of("content", knowledge.chat(question != null ? question : message))); }
     @GetMapping("/chat/simple") public Map<String,Object> simple(@RequestParam(required = false) String question, @RequestParam(required = false) String message) { return chat(question, message); }
+    @GetMapping("/session/list") public Map<String,Object> sessions() { return ok(knowledge.sessions()); }
+    @PostMapping("/session") public Map<String,Object> create(@RequestBody(required = false) Map<String, Object> body,
+                                                               @RequestParam(required = false) String name,
+                                                               @RequestParam(required = false, defaultValue = "") String tag) {
+        String sessionName = name != null ? name : String.valueOf(body == null ? "新会话" : body.getOrDefault("name", "新会话"));
+        String sessionTag = tag != null && !tag.isBlank() ? tag : String.valueOf(body == null ? "" : body.getOrDefault("tag", ""));
+        return ok(knowledge.createSession(sessionName, sessionTag));
+    }
+    @PutMapping("/session/{id}") public Map<String,Object> update(@PathVariable String id,
+                                                                    @RequestBody(required = false) Map<String, Object> body,
+                                                                    @RequestParam(required = false) String name,
+                                                                    @RequestParam(required = false) String tag) {
+        String sessionName = name != null ? name : String.valueOf(body == null ? "未命名会话" : body.getOrDefault("name", "未命名会话"));
+        String sessionTag = tag != null ? tag : String.valueOf(body == null ? "" : body.getOrDefault("tag", ""));
+        return ok(knowledge.updateSession(id, sessionName, sessionTag));
+    }
+    @DeleteMapping("/session/{id}") public Map<String,Object> deleteSession(@PathVariable String id) { knowledge.deleteSession(id); return ok(null); }
+    @GetMapping("/chat/records") public Map<String,Object> records() { return ok(Map.of("list", Collections.emptyList(), "total", 0)); }
 }
