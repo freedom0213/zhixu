@@ -20,6 +20,10 @@ spring:
             refresh: false
     gateway:
       routes:
+        - id: ct
+          uri: lb://ai-service
+          predicates:
+            - Path=/ct/**
         - id: ms
           uri: lb://media-service
           predicates:
