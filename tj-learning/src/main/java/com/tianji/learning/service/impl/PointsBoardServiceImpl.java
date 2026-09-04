@@ -161,9 +161,10 @@ public class PointsBoardServiceImpl extends ServiceImpl<PointsBoardMapper, Point
         //2.获取userId
         Long userId = UserContext.getUser();
         //3.获取积分
-        Double points = ops.score(userId);
+        // StringRedisTemplate serializes sorted-set members as strings.
+        Double points = ops.score(String.valueOf(userId));
         //4.查询排名
-        Long rank = ops.reverseRank(userId);
+        Long rank = ops.reverseRank(String.valueOf(userId));
         //5.封装返回
         PointsBoard board = new PointsBoard();
         board.setPoints(points == null ? 0 : points.intValue());

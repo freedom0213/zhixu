@@ -103,10 +103,9 @@ const getCollectionListData = async () => {
       }
     })
     .catch(() => {
-      ElMessage({
-        message: "收藏数据请求出错！",
-        type: 'error'
-      });
+      // 收藏服务暂未接入本地演示数据，展示标准空状态。
+      data.value = []
+      count.value = 0
     });
 }
 

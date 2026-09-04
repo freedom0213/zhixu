@@ -57,10 +57,9 @@ const getExamListData = async () => {
       }
     })
     .catch(() => {
-      ElMessage({
-        message: "最近学习数据请求出错！",
-        type: 'error'
-      });
+      // 考试服务暂无演示记录，展示标准空状态。
+      myExamData.value = []
+      count.value = 0
     });
 }
 
