@@ -4,6 +4,9 @@ x-java-service: &java-service
   restart: unless-stopped
   environment:
     SPRING_PROFILES_ACTIVE: local
+    # Keep the local demo stack within Docker Desktop's WSL memory budget.
+    # Services can override this value when a larger workload is required.
+    JAVA_OPTS: ${JAVA_OPTS:--Xms96m -Xmx256m -XX:+UseSerialGC -XX:MaxMetaspaceSize=128m -XX:ReservedCodeCacheSize=32m}
     NACOS_SERVER_ADDR: nacos:8848
     NACOS_NAMESPACE: ""
     TJ_JDBC_HOST: mysql
@@ -24,10 +27,6 @@ x-java-service: &java-service
       condition: service_healthy
     rabbitmq:
       condition: service_healthy
-    elasticsearch:
-      condition: service_healthy
-    elasticsearch-init:
-      condition: service_completed_successfully
     nacos-init:
       condition: service_completed_successfully
   build:
@@ -66,7 +65,21 @@ services:
     ports: ["8082:8082"]
 
   search-service:
+    profiles: ["search"]
     <<: *java-service
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      elasticsearch-init:
+        condition: service_completed_successfully
+      nacos-init:
+        condition: service_completed_successfully
     build:
       context: ..
       dockerfile: deploy/service.Dockerfile
