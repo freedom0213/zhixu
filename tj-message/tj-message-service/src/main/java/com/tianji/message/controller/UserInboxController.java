@@ -38,4 +38,18 @@ public class UserInboxController {
     public PageDTO<UserInboxDTO> queryUserInBoxesPage(UserInboxQuery query){
         return inboxService.queryUserInBoxesPage(query);
     }
+
+    /**
+     * The local demo does not seed notification records yet. Keep the portal
+     * header quiet until real notification delivery is configured.
+     */
+    @GetMapping("/unread")
+    public Integer queryUnreadCount() {
+        return 0;
+    }
+
+    @GetMapping("/unread/{type}")
+    public Integer queryUnreadCountByType(@PathVariable Integer type) {
+        return 0;
+    }
 }
