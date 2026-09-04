@@ -39,7 +39,7 @@ public class Coupon implements Serializable {
     /**
      * 优惠券名称，可以和活动名称保持一致
      */
-    @TableField("'name'")
+    @TableField("name")
     private String name;
 
     /**
@@ -55,7 +55,7 @@ public class Coupon implements Serializable {
     /**
      * 是否限定作用范围，false：不限定，true：限定。默认false
      */
-    @TableField("'specific'")
+    @TableField("`specific`")
     private Boolean specific;
 
     /**
