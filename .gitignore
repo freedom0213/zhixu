@@ -15,6 +15,7 @@ target
 .project
 logs
 job
+data/ai
 .env
 *.local.override.yml
 *.local.override.yaml

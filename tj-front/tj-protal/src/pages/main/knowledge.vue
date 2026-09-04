@@ -380,9 +380,9 @@ const askQuestion = async () => {
                 type: 'markdownChunk', 
                 chunks: markdownChunks 
             });
-        } else if (res && res.content) {
+        } else if (res && (res.content || res.data?.content)) {
             // 处理普通文本格式的响应
-            answer.value = res.content;
+            answer.value = res.content || res.data.content;
             const processedContent = md.render(answer.value);
             chatMessagesList.value.push({ 
                 type: 'assistant', 
