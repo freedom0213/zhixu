@@ -2,7 +2,7 @@
 <template>
   <div class="classAbout">
     <div class="title">课程简介</div>
-    <div class="marg-bt-20">{{baseDetailsData.introduce}}</div>
+    <div class="marg-bt-20 rich-text" v-html="baseDetailsData.introduce"></div>
     <div class="title">适学人群</div>
     <div class="marg-bt-20">{{baseDetailsData.usePeople}}</div>
     <div class="title">授课老师</div>
@@ -35,8 +35,8 @@
                   <div>{{it.job}}</div>
                 </div>
               </div>
-              <div class="about">
-                {{it.introduce}}
+              <div class="about rich-text">
+                <span v-html="it.introduce"></span>
               </div>
             </div>
           </div>
@@ -44,7 +44,7 @@
         </swiper>
     </div>
     <div class="title">课程详情</div>
-    <div class="marg-bt-20">{{baseDetailsData.detail}}</div>
+    <div class="marg-bt-20 rich-text" v-html="baseDetailsData.detail"></div>
   </div>
 </template>
 <script setup>
