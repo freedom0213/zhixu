@@ -58,7 +58,7 @@ export const userLogins = (data) => {
 // 发送验证码
 export const verifycode = (params) =>
 request({
-	url: `${AUTH_API_PREFIX}/code/verifycode`,
+	url: `${USER_API_PREFIX}/code/verifycode`,
 	method: 'post',
 	params
 })
@@ -72,7 +72,7 @@ export const resetPassword = (params) =>
 // 账号注册
 export const userRegist = (params) =>
 request({
-	url: `${AUTH_API_PREFIX}/users/register`,
+	url: `${USER_API_PREFIX}/students/register`,
 	method: 'post',
 	data:params
 })
