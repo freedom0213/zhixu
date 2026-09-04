@@ -64,9 +64,24 @@ a{
 //   }
 // }
 // logo定义 - 
-.logo img{
-  width: 158.33px;
+.brand-logo {
+  display: inline-flex;
+  align-items: center;
   height: 48px;
+  text-decoration: none;
+}
+.brand-mark {
+  display: inline-block;
+  width: 42px;
+  height: 48px;
+  margin-right: 8px;
+  background: url('@/assets/logo.png') left center / 158.33px 48px no-repeat;
+}
+.brand-name {
+  color: #263238;
+  font-size: 24px;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 // 原子化CSS定义 将高频使用的样式单独抽离 使用时拼合到calss里

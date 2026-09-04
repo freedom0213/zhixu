@@ -2,7 +2,7 @@
   <header class="bg-wt">
     <div class="container fx">
       <div class="logo">
-        <router-link to="/"><img src="@/assets/logo.png" alt="" srcset=""></router-link>
+        <router-link to="/" class="brand-logo"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">知序学堂</span></router-link>
       </div>
       <!-- 头部分类-start -->
       <div v-if="route.path != '/main/index' && route.path != '/login'" class="courseClass font-bt2"

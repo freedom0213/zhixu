@@ -8,10 +8,10 @@
         <div class="about fx-sb">
           <div class="info">
             <p>知序学堂致力于普及中国最好的教育，与中国一流大学和机构合作提供在线课程</p>
-            <p>&#169 online-mooc.com 保留所有权利 -沪ICP备15025210号</p>
+            <p>&#169 online-zhixu.com 保留所有权利 -沪ICP备15025210号</p>
           </div>
           <div class="logo">
-            <img src="@/assets/logo.png" alt="" srcset="">
+            <span class="brand-logo"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">知序学堂</span></span>
           </div>
         </div>
     </div>
@@ -55,9 +55,13 @@ footer {
   .about{
     line-height: 30px;
     color: var(--color-font2);
-    img{
-      width: 144px;
-      height: 48px;
+    .brand-logo{
+      .brand-mark{
+        width: 42px;
+      }
+      .brand-name{
+        font-size: 20px;
+      }
     }
   }
 }
