@@ -75,14 +75,14 @@ public class KnowledgeService {
     public String chat(String question) {
         String query = question == null ? "" : question.trim();
         String context = documents.values().stream().flatMap(t -> Arrays.stream(t.split("\\n\\s*\\n")))
-                .filter(s -> containsKeyword(s, query)).limit(5).reduce((a, b) -> a + "\n\n" + b).orElse("");
+                .filter(s -> containsKeyword(s, query)).limit(12).reduce((a, b) -> a + "\n\n" + b).orElse("");
         if (context.isEmpty() && query.toLowerCase(Locale.ROOT).contains("java")) {
             context = documents.values().stream().filter(t -> t.toLowerCase(Locale.ROOT).contains("java"))
-                    .flatMap(t -> Arrays.stream(t.split("\\n\\s*\\n"))).limit(5)
+                    .flatMap(t -> Arrays.stream(t.split("\\n\\s*\\n"))).limit(12)
                     .reduce((a, b) -> a + "\n\n" + b).orElse("");
         }
         if (model == null) return context.isEmpty() ? "本地 AI 尚未配置 DeepSeek API Key，请先上传相关文档并配置密钥。" : "已检索到相关知识片段：\n\n" + context;
-        return model.generate("你是知序学堂课程助手。请仅根据参考资料回答问题，不确定时明确说明。\n参考资料：\n" + context + "\n问题：" + question);
+        return model.generate("你是知序学堂课程助手。请优先依据参考资料回答；资料涉及相关概念时，可用简洁的基础知识补充解释，不要编造与问题无关的内容。资料确实没有涉及时，再明确说明。\n参考资料：\n" + context + "\n问题：" + question);
     }
 
     private boolean containsKeyword(String text, String question) {
