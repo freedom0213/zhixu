@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Constants;
 import com.tianji.learning.domain.po.PointsRecord;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import feign.Param;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
@@ -23,6 +23,6 @@ public interface PointsRecordMapper extends BaseMapper<PointsRecord> {
     //就需要加上@Param(Constants.WRAPPER)注解
     @Select("SELECT SUM(points) FROM points_record ${ew.customSqlSegment}")
     Integer queryUserPointsByTypeAndDate(@Param(Constants.WRAPPER) QueryWrapper<PointsRecord> wrapper);
-    @Select("SELECT type , SUM(points) AS points FROM points_record ${ew.customSqlSegment} ORDER BY type")
+    @Select("SELECT type, SUM(points) AS points FROM points_record ${ew.customSqlSegment} GROUP BY type ORDER BY type")
     List<PointsRecord> queryUserPointsByDate(@Param(Constants.WRAPPER) QueryWrapper<PointsRecord> qw);
 }

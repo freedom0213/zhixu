@@ -417,7 +417,11 @@ const loadPrivateMessages = async (append = false) => {
             }
         }
     } catch (error) {
-        ElMessage.error('获取私信列表失败');
+        // Private conversations are not enabled in the local demo yet.
+        // Treat a missing endpoint as an empty state instead of an error toast.
+        messages.value = [];
+        privateMessageTotal.value = 0;
+        hasMoreData.value = false;
     }
 };
 
@@ -448,7 +452,8 @@ const loadConversationMessages = async (otherUserId, pageNo) => {
             messageHistoryTotal.value = res.data.total;
         }
     } catch (error) {
-        ElMessage.error('加载对话记录失败');
+        conversationMessages.value = [];
+        messageHistoryTotal.value = 0;
     }
 };
 
