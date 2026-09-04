@@ -14,7 +14,7 @@
             <i class="fa fa-envelope"></i>
             <h3>邮箱咨询</h3>
           </div>
-          <p>你也可以通过发送邮件至 <a href="mailto:1418875140@qq.com">1418875140@qq.com</a> 进行咨询，我们会在 24 小时内回复你。</p>
+          <p>你也可以通过发送邮件至 <a href="mailto:926049197@qq.com">926049197@qq.com</a> 进行咨询，我们会在 24 小时内回复你。</p>
         </div>
         <div class="service-item">
           <div class="service-header">
