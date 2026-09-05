@@ -10,12 +10,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 public class KnowledgeService {
     private final AiProperties properties;
     private final Map<String, String> documents = new ConcurrentHashMap<>();
     private final Map<String, Map<String, Object>> sessions = new ConcurrentHashMap<>();
+    private final AtomicLong recordSequence = new AtomicLong();
     private final ChatLanguageModel model;
 
     public KnowledgeService(AiProperties properties) {
@@ -69,6 +71,7 @@ public class KnowledgeService {
     }
     public void deleteSession(String id) { sessions.remove(id); }
     public List<Map<String, Object>> records(String id) {
+        if (id == null || id.isBlank()) return Collections.emptyList();
         Map<String, Object> session = sessions.get(id);
         if (session == null) return Collections.emptyList();
         @SuppressWarnings("unchecked") List<Map<String, Object>> records = (List<Map<String, Object>>) session.get("records");
@@ -107,7 +110,7 @@ public class KnowledgeService {
     private Map<String, Object> record(String type, String text) {
         Map<String, Object> content = new LinkedHashMap<>(); content.put("type", type);
         if ("USER".equals(type)) content.put("contents", List.of(Map.of("text", text))); else content.put("text", text);
-        return Map.of("content", new com.fasterxml.jackson.databind.ObjectMapper().valueToTree(content).toString(), "segmentIndex", System.currentTimeMillis());
+        return Map.of("content", new com.fasterxml.jackson.databind.ObjectMapper().valueToTree(content).toString(), "segmentIndex", recordSequence.incrementAndGet());
     }
 
     private boolean matchesDocument(String name, String query) {

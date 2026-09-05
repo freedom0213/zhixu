@@ -108,6 +108,7 @@ const currentPage = ref(1);
 const pageSize = ref(10);
 // 是否正在加载更多历史记录
 const isLoadingMore = ref(false);
+let requestGeneration = 0;
 
 import proxy from '@/config/proxy';
 const env = import.meta.env.MODE || 'development';
@@ -158,12 +159,18 @@ const fetchUserSessionList = async () => {
 
 // 选择会话
 const selectSession = async (sessionId) => {
+    requestGeneration++;
+    const generation = requestGeneration;
+    if (abortController.value) abortController.value.abort();
+    isLoading.value = false;
     selectedSessionId.value = sessionId;
     currentPage.value = 1;
     chatHistory.value = [];
     try {
+        if (!sessionId) return;
         const response = await getChatRecord({sessionId:sessionId, pageNo:currentPage.value, pageSize:pageSize.value});
-        const records = response.data.list; // 从响应对象中提取 data 属性
+        if (generation !== requestGeneration || selectedSessionId.value !== sessionId) return;
+        const records = response?.data?.list || []; // 删除的会话按空历史处理
         // 按照 segmentIndex 从小到大排序
         records.sort((a, b) => {
             const segmentIndexA = a.segmentIndex || 0;
@@ -194,7 +201,7 @@ const selectSession = async (sessionId) => {
         await scrollToBottom();
     } catch (error) {
         console.error('加载会话历史记录失败:', error);
-        ElMessage.error('加载会话历史记录失败: ' + (error.message || '未知错误'));
+        if (generation === requestGeneration && error.name !== 'AbortError') ElMessage.error('加载会话历史记录失败: ' + (error.message || '未知错误'));
     }
 };
 // 切换模式下拉菜单显示状态
@@ -248,6 +255,7 @@ const sendMessage = async () => {
 
     isLoading.value = true;
     const userMessage = inputMessage.value;
+    const generation = requestGeneration;
     chatHistory.value.push({ type: 'user', content: userMessage });
     inputMessage.value = '';
 
@@ -273,6 +281,7 @@ const sendMessage = async () => {
 
         const request = currentMode.value === 'knowledge' ? chatByMarkdownDoc : memoryChatRedis;
         const response = await request({ message: userMessage, sessionId: selectedSessionId.value });
+        if (generation !== requestGeneration) return;
         const answer = response?.data?.content || response?.content || response?.data?.answer || '';
         if (!answer) throw new Error(response?.msg || 'AI 未返回内容');
         const processed = processContent(answer);
@@ -327,6 +336,7 @@ const scrollToBottom = async () => {
 
 // 处理滚动事件
 const handleScroll = async () => {
+    if (!chatMessages.value || !selectedSessionId.value) return;
     const { scrollTop, scrollHeight, clientHeight } = chatMessages.value;
     if (scrollTop === 0 && !isLoadingMore.value) {
         isLoadingMore.value = true;
@@ -334,7 +344,7 @@ const handleScroll = async () => {
         currentPage.value++;
         try {
             const response = await getChatRecord({sessionId:selectedSessionId.value, pageNo:currentPage.value, pageSize:pageSize.value});
-            const records = response.data.list;
+            const records = response?.data?.list || [];
             // 按照 segmentIndex 从小到大排序
             records.sort((a, b) => {
                 const segmentIndexA = a.segmentIndex || 0;
@@ -363,9 +373,10 @@ const handleScroll = async () => {
                 });
                 chatHistory.value = newHistory.reverse().concat(chatHistory.value);
             }
+            if (records.length === 0) currentPage.value--;
         } catch (error) {
             console.error('加载更多会话历史记录失败:', error);
-            ElMessage.error('加载更多会话历史记录失败: ' + (error.message || '未知错误'));
+            if (error.name !== 'AbortError') ElMessage.error('加载更多会话历史记录失败: ' + (error.message || '未知错误'));
             currentPage.value--;
         } finally {
             await nextTick();
