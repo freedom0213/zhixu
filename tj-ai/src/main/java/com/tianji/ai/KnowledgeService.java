@@ -85,6 +85,10 @@ public class KnowledgeService {
 
     public String chat(String sessionId, String question) {
         String query = question == null ? "" : question.trim();
+        if (query.contains("集合")) {
+            String section = collectionSection();
+            if (!section.isBlank()) return answerWithContext(sessionId, query, section);
+        }
         String context = documents.entrySet().stream()
                 .filter(e -> matchesDocument(e.getKey(), query))
                 .flatMap(e -> Arrays.stream(e.getValue().split("\\n\\s*\\n")))
@@ -92,9 +96,15 @@ public class KnowledgeService {
         if (context.isEmpty() && (query.toLowerCase(Locale.ROOT).contains("java") || query.contains("类") || query.contains("对象"))) {
             context = documents.entrySet().stream().filter(e -> e.getKey().toLowerCase(Locale.ROOT).contains("java"))
                     .map(Map.Entry::getValue)
-                    .flatMap(t -> Arrays.stream(t.split("\\n\\s*\\n"))).limit(12)
+                    .flatMap(t -> Arrays.stream(t.split("\\n\\s*\\n")))
+                    .filter(s -> query.contains("集合") ? s.contains("集合") || s.contains("List") || s.contains("Map") || s.contains("ArrayList") : true)
+                    .limit(12)
                     .reduce((a, b) -> a + "\n\n" + b).orElse("");
         }
+        return answerWithContext(sessionId, query, context);
+    }
+
+    private String answerWithContext(String sessionId, String question, String context) {
         String answer = model == null ? (context.isEmpty() ? "知识库中没有找到与该问题相关的内容。" : "已检索到相关知识片段：\n\n" + context)
                 : model.generate("你是知序学堂课程助手。请优先依据参考资料回答；资料涉及相关概念时，可用简洁的基础知识补充解释，不要编造与问题无关的内容。资料确实没有涉及时，再明确说明。\n参考资料：\n" + context + "\n问题：" + question);
         if (sessionId != null) {
@@ -105,6 +115,17 @@ public class KnowledgeService {
             }
         }
         return answer;
+    }
+
+    private String collectionSection() {
+        for (String text : documents.values()) {
+            int start = text.indexOf("集合框架");
+            if (start < 0) continue;
+            int sectionStart = text.lastIndexOf("##", start);
+            int next = text.indexOf("\n## ", start + 2);
+            return text.substring(Math.max(0, sectionStart), next > 0 ? next : text.length()).trim();
+        }
+        return "";
     }
 
     private Map<String, Object> record(String type, String text) {
@@ -122,7 +143,9 @@ public class KnowledgeService {
 
     private boolean containsKeyword(String text, String question) {
         String normalizedText = text.toLowerCase(Locale.ROOT);
-        for (String token : question.toLowerCase(Locale.ROOT).split("\\s+|[，。！？、]")) {
+        String normalizedQuestion = question.toLowerCase(Locale.ROOT).replaceAll("([a-z0-9]+)(?=[\\u4e00-\\u9fff])", "$1 ")
+                .replaceAll("(?<=[\\u4e00-\\u9fff])([a-z0-9]+)", " $1");
+        for (String token : normalizedQuestion.split("\\s+|[，。！？、]")) {
             if (token.length() > 1 && normalizedText.contains(token)) return true;
             if (token.length() >= 2 && token.chars().allMatch(c -> c > 127)) {
                 for (int i = 0; i + 1 < token.length(); i++) if (normalizedText.contains(token.substring(i, i + 2))) return true;
