@@ -1,6 +1,6 @@
 # 知序学堂（Zhixu）
 
-知序学堂是一个面向在线教育场景的 Spring Cloud 微服务项目，包含认证、用户、课程、学习、考试、交易、支付、营销、搜索和媒资等领域服务。项目内部 Java 包名、模块名和基础设施标识继续沿用教程中的 `tianji`/`tj` 前缀，以避免破坏已有依赖。
+知序学堂是一个面向在线教育场景的 Spring Cloud 微服务项目，包含认证、用户、课程、学习、考试、交易、支付、营销、搜索和媒资等领域服务。Java 包名现使用 `com.zhixu`，模块名和基础设施标识继续沿用教程中的 `tianji`/`tj` 前缀，以保持服务编排和运行时依赖稳定。
 
 ![Zhixu local microservice architecture](./assets/readme/architecture.svg)
 
