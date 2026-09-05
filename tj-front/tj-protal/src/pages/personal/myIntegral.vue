@@ -56,7 +56,7 @@ const value = ref(new Date())
 
 const access = ref([
   {value: 1, 'type': '课程学习', points:0, maxPoints: 50},
-  {value: 2, 'type': '每日签到', points:0, maxPoints: 2},
+  {value: 2, 'type': '每日签到', points:0, maxPoints: 1},
   {value: 3, 'type': '课程问答', points:0, maxPoints: 20},
   {value: 4, 'type': '课程笔记', points:0, maxPoints: 20},
   {value: 5, 'type': '课程评价', points:0, maxPoints: 999},
