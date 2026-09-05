@@ -256,6 +256,8 @@ const sendMessage = async () => {
     isLoading.value = true;
     const userMessage = inputMessage.value;
     const generation = requestGeneration;
+    const controller = new AbortController();
+    abortController.value = controller;
     chatHistory.value.push({ type: 'user', content: userMessage });
     inputMessage.value = '';
 
@@ -280,7 +282,7 @@ const sendMessage = async () => {
         let inThinkingTag = false;
 
         const request = currentMode.value === 'knowledge' ? chatByMarkdownDoc : memoryChatRedis;
-        const response = await request({ message: userMessage, sessionId: selectedSessionId.value });
+        const response = await request({ message: userMessage, sessionId: selectedSessionId.value }, controller.signal);
         if (generation !== requestGeneration) return;
         const answer = response?.data?.content || response?.content || response?.data?.answer || '';
         if (!answer) throw new Error(response?.msg || 'AI 未返回内容');
@@ -292,6 +294,7 @@ const sendMessage = async () => {
         assistantMessage.isTyping = false;
     } catch (error) {
         console.error('请求失败:', error);
+        if (generation !== requestGeneration || error.name === 'AbortError' || error.code === 'ERR_CANCELED') return;
         if (error.name !== 'AbortError') {
             ElMessage.error('请求失败: ' + (error.message || '未知错误'));
 
@@ -303,9 +306,11 @@ const sendMessage = async () => {
         }
         scrollToBottom();
     } finally {
-        isLoading.value = false;
-        isStreaming.value = false;
-        await scrollToBottom();
+        if (generation === requestGeneration) {
+            isLoading.value = false;
+            isStreaming.value = false;
+            await scrollToBottom();
+        }
     }
 };
 
