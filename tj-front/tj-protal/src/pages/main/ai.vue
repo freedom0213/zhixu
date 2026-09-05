@@ -336,7 +336,10 @@ const scrollToBottom = async () => {
 
 // 处理滚动事件
 const handleScroll = async () => {
-    if (!chatMessages.value || !selectedSessionId.value) return;
+    // 本地演示接口一次返回当前会话全部记录，没有分页语义；避免滚动到顶部时重复追加。
+    if (!chatMessages.value || !selectedSessionId.value || isLoadingMore.value) return;
+    return;
+    /*
     const { scrollTop, scrollHeight, clientHeight } = chatMessages.value;
     if (scrollTop === 0 && !isLoadingMore.value) {
         isLoadingMore.value = true;
@@ -386,6 +389,7 @@ const handleScroll = async () => {
             isLoadingMore.value = false;
         }
     }
+    */
 };
 
 // 处理内容，提取<think>标签和主要内容
