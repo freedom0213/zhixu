@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.tianji.learning.mapper.NoteMapper">
+<mapper namespace="com.zhixu.learning.mapper.NoteMapper">
 
-    <select id="queryNotePageBySectionId" resultType="com.tianji.learning.domain.po.Note">
+    <select id="queryNotePageBySectionId" resultType="com.zhixu.learning.domain.po.Note">
         SELECT n.id, n.user_id, n.course_id, n.chapter_id, n.section_id, n.note_moment, n.content,
         n.is_private, n.hidden, n.hidden_reason,n.author_id, n.create_time, n.update_time, n2.is_gathered
         FROM note n
@@ -18,7 +18,7 @@
         AND (n.is_private = 0 OR n.user_id = #{userId})
         ORDER BY n.note_moment
     </select>
-    <select id="queryNotePage" resultType="com.tianji.learning.domain.po.Note">
+    <select id="queryNotePage" resultType="com.zhixu.learning.domain.po.Note">
         SELECT n.id,
                n.user_id,
                n.course_id,

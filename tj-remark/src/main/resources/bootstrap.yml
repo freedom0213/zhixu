@@ -28,7 +28,7 @@ tj:
   swagger:
     enable: true
     enableResponseWrap: true
-    package-path: com.tianji.remark.controller
+    package-path: com.zhixu.remark.controller
     title: 知序学堂 - 评价中心接口文档
     description: 该服务包含评价，点赞等功能
     contact-name: 传智教育·研究院

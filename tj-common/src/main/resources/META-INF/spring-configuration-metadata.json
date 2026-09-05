@@ -2,8 +2,8 @@
   "groups": [
     {
       "name": "tj.swagger",
-      "type": "com.tianji.common.autoconfigure.swagger.Knife4jConfiguration",
-      "sourceType": "com.tianji.common.autoconfigure.swagger.SwaggerConfigProperties"
+      "type": "com.zhixu.common.autoconfigure.swagger.Knife4jConfiguration",
+      "sourceType": "com.zhixu.common.autoconfigure.swagger.SwaggerConfigProperties"
     },
     {
       "name": "tj.mq"
@@ -16,8 +16,8 @@
     },
     {
       "name": "tj.xxl-job",
-      "type": "com.tianji.common.autoconfigure.xxljob.XxlJobConfig",
-      "sourceType": "com.tianji.common.autoconfigure.xxljob.XxlJobProperties"
+      "type": "com.zhixu.common.autoconfigure.xxljob.XxlJobConfig",
+      "sourceType": "com.zhixu.common.autoconfigure.xxljob.XxlJobProperties"
     }
   ],
   "properties": [
@@ -25,63 +25,63 @@
       "name": "tj.swagger.enable",
       "type": "java.lang.Boolean",
       "description": "是否开启swagger功能，默认false",
-      "sourceType": "com.tianji.common.autoconfigure.swagger.SwaggerConfigProperties",
+      "sourceType": "com.zhixu.common.autoconfigure.swagger.SwaggerConfigProperties",
       "defaultValue": false
     },
     {
       "name": "tj.swagger.enableResponseWrap",
       "type": "java.lang.Boolean",
       "description": "是否开启响应结果包装功能，默认false",
-      "sourceType": "com.tianji.common.autoconfigure.swagger.SwaggerConfigProperties",
+      "sourceType": "com.zhixu.common.autoconfigure.swagger.SwaggerConfigProperties",
       "defaultValue": false
     },
     {
       "name": "tj.swagger.packagePath",
       "type": "java.lang.String",
       "description": "API接口扫描包",
-      "sourceType": "com.tianji.common.autoconfigure.swagger.SwaggerConfigProperties",
+      "sourceType": "com.zhixu.common.autoconfigure.swagger.SwaggerConfigProperties",
       "defaultValue": ""
     },
     {
       "name": "tj.swagger.title",
       "type": "java.lang.String",
       "description": "API文档标题",
-      "sourceType": "com.tianji.common.autoconfigure.swagger.SwaggerConfigProperties",
+      "sourceType": "com.zhixu.common.autoconfigure.swagger.SwaggerConfigProperties",
       "defaultValue": ""
     },
     {
       "name": "tj.swagger.description",
       "type": "java.lang.String",
       "description": "文档描述",
-      "sourceType": "com.tianji.common.autoconfigure.swagger.SwaggerConfigProperties",
+      "sourceType": "com.zhixu.common.autoconfigure.swagger.SwaggerConfigProperties",
       "defaultValue": ""
     },
     {
       "name": "tj.swagger.contactName",
       "type": "java.lang.String",
       "description": "联系人姓名",
-      "sourceType": "com.tianji.common.autoconfigure.swagger.SwaggerConfigProperties",
+      "sourceType": "com.zhixu.common.autoconfigure.swagger.SwaggerConfigProperties",
       "defaultValue": ""
     },
     {
       "name": "tj.swagger.contactUrl",
       "type": "java.lang.String",
       "description": "联系人主页地址",
-      "sourceType": "com.tianji.common.autoconfigure.swagger.SwaggerConfigProperties",
+      "sourceType": "com.zhixu.common.autoconfigure.swagger.SwaggerConfigProperties",
       "defaultValue": ""
     },
     {
       "name": "tj.swagger.contactEmail",
       "type": "java.lang.String",
       "description": "联系人邮箱",
-      "sourceType": "com.tianji.common.autoconfigure.swagger.SwaggerConfigProperties",
+      "sourceType": "com.zhixu.common.autoconfigure.swagger.SwaggerConfigProperties",
       "defaultValue": ""
     },
     {
       "name": "tj.swagger.version",
       "type": "java.lang.String",
       "description": "版本",
-      "sourceType": "com.tianji.common.autoconfigure.swagger.SwaggerConfigProperties",
+      "sourceType": "com.zhixu.common.autoconfigure.swagger.SwaggerConfigProperties",
       "defaultValue": ""
     },
     {

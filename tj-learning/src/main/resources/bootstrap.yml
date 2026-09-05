@@ -30,7 +30,7 @@ tj:
   swagger:
     enable: true
     enableResponseWrap: true
-    package-path: com.tianji.learning.controller
+    package-path: com.zhixu.learning.controller
     title: 知序学堂 - 学习中心接口文档
     description: 该服务包含用户学习的各种辅助功能
     contact-name: 传智教育·研究院

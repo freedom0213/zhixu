@@ -25,7 +25,7 @@ spring:
 tj:
   swagger:
     enable: true
-    package-path: com.tianji.course.controller
+    package-path: com.zhixu.course.controller
     title: 知序学堂 - 课程系统接口文档
     description: 该服务包含课程管理相关功能
     contact-name: 传智教育·研究院

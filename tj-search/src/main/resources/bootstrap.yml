@@ -27,7 +27,7 @@ spring:
 tj:
   swagger:
     enable: true
-    package-path: com.tianji.search.controller
+    package-path: com.zhixu.search.controller
     title: 知序学堂 - 搜索系统接口文档
     description: 该服务包含课程搜索、兴趣推荐等相关功能
     contact-name: 传智教育·研究院

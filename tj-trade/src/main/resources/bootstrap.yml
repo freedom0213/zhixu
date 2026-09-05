@@ -23,7 +23,7 @@ tj:
   swagger:
     enable: true
     enableResponseWrap: true
-    package-path: com.tianji.trade.controller
+    package-path: com.zhixu.trade.controller
     title: 知序学堂 - 交易中心接口文档
     description: 该服务提供购物车、订单管理等功能
     contact-name: 传智教育·研究院

@@ -7,7 +7,7 @@ spring:
         group: DEFAULT_GROUP
 logging:
   level:
-    com.tianji: debug
+    com.zhixu: debug
 tj:
   auth:
     excludePath: []

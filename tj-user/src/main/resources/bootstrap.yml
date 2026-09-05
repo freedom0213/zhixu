@@ -26,7 +26,7 @@ tj:
   swagger:
     enable: true
     enableResponseWrap: true
-    package-path: com.tianji.user.controller
+    package-path: com.zhixu.user.controller
     title: 知序学堂 - 用户中心接口文档
     description: 该服务用户管理、用户信息管理
     contact-name: 传智教育·研究院

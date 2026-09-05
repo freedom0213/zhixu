@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.tianji.auth.mapper.MenuMapper">
+<mapper namespace="com.zhixu.auth.mapper.MenuMapper">
 
     <!-- 通用查询映射结果 -->
-    <resultMap id="BaseResultMap" type="com.tianji.auth.domain.po.Menu">
+    <resultMap id="BaseResultMap" type="com.zhixu.auth.domain.po.Menu">
         <id column="id" property="id" />
         <result column="parent_id" property="parentId" />
         <result column="label" property="label" />
@@ -12,7 +12,7 @@
         <result column="create_time" property="createTime" />
         <result column="update_time" property="updateTime" />
     </resultMap>
-    <select id="listByRoles" resultType="com.tianji.auth.domain.po.Menu">
+    <select id="listByRoles" resultType="com.zhixu.auth.domain.po.Menu">
         SELECT m.id, parent_id, label, path, icon, priority
         FROM menu m
         INNER JOIN role_menu rm ON m.id = rm.menu_id

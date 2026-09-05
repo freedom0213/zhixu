@@ -28,7 +28,7 @@ tj:
   swagger:
     enable: true
     enableResponseWrap: true
-    package-path: com.tianji.message.controller
+    package-path: com.zhixu.message.controller
     title: Tianji message service
     description: Message service
     contact-name: Tianji
