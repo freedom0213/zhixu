@@ -25,7 +25,7 @@ tj:
   swagger:
     enable: true
     enableResponseWrap: true
-    package-path: com.tianji.pay.controller
+    package-path: com.zhixu.pay.controller
     title: Tianji pay service
     description: Payment service
     contact-name: Tianji

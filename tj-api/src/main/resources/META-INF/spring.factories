@@ -1,5 +1,5 @@
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-  com.tianji.api.config.RequestIdRelayConfiguration, \
-  com.tianji.api.config.RoleCacheConfig, \
-  com.tianji.api.config.FallbackConfig, \
-  com.tianji.api.config.CategoryCacheConfig
+  com.zhixu.api.config.RequestIdRelayConfiguration, \
+  com.zhixu.api.config.RoleCacheConfig, \
+  com.zhixu.api.config.FallbackConfig, \
+  com.zhixu.api.config.CategoryCacheConfig

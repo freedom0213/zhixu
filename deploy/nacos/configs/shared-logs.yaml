@@ -1,4 +1,4 @@
 logging:
   level:
     root: info
-    com.tianji: info
+    com.zhixu: info

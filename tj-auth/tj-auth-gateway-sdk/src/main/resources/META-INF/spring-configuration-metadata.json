@@ -2,8 +2,8 @@
   "groups": [
     {
       "name": "tj.auth.gateway",
-      "type": "com.tianji.authsdk.gateway.config.AuthAutoConfiguration",
-      "sourceType": "com.tianji.authsdk.gateway.config.AuthProperties"
+      "type": "com.zhixu.authsdk.gateway.config.AuthAutoConfiguration",
+      "sourceType": "com.zhixu.authsdk.gateway.config.AuthProperties"
     }
   ],
   "properties": [
@@ -11,7 +11,7 @@
       "name": "tj.auth.excludePath",
       "type": "java.util.Set",
       "description": "不用登录就能访问的路径，ant风格通配符",
-      "sourceType": "com.tianji.authsdk.gateway.config.AuthProperties",
+      "sourceType": "com.zhixu.authsdk.gateway.config.AuthProperties",
       "defaultValue": ""
     }
   ],

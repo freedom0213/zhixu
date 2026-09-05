@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <artifactId>tjxt</artifactId>
-        <groupId>com.tianji</groupId>
+        <groupId>com.zhixu</groupId>
         <version>1.0.0</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -18,17 +18,17 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.tianji</groupId>
+            <groupId>com.zhixu</groupId>
             <artifactId>tj-pay-api</artifactId>
             <version>1.0.0</version>
         </dependency>
         <dependency>
-            <groupId>com.tianji</groupId>
+            <groupId>com.zhixu</groupId>
             <artifactId>tj-api</artifactId>
             <version>1.0.0</version>
         </dependency>
         <dependency>
-            <groupId>com.tianji</groupId>
+            <groupId>com.zhixu</groupId>
             <artifactId>tj-auth-resource-sdk</artifactId>
             <version>1.0.0</version>
         </dependency>

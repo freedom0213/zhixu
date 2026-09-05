@@ -26,7 +26,7 @@ tj:
   swagger:
     enable: true
     enableResponseWrap: true
-    package-path: com.tianji.exam.controller
+    package-path: com.zhixu.exam.controller
     title: 知序学堂 - 考试中心接口文档
     description: 该服务提供题目管理、考试管理、数据统计等功能
     contact-name: 传智教育·研究院

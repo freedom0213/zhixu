@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>com.tianji</groupId>
+        <groupId>com.zhixu</groupId>
         <artifactId>tjxt</artifactId>
         <version>1.0.0</version>
     </parent>
@@ -20,13 +20,13 @@
     <dependencies>
         <!--auth-sdk-->
         <dependency>
-            <groupId>com.tianji</groupId>
+            <groupId>com.zhixu</groupId>
             <artifactId>tj-auth-resource-sdk</artifactId>
             <version>1.0.0</version>
         </dependency>
         <!--api-->
         <dependency>
-            <groupId>com.tianji</groupId>
+            <groupId>com.zhixu</groupId>
             <artifactId>tj-api</artifactId>
             <version>1.0.0</version>
         </dependency>
@@ -84,7 +84,7 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <mainClass>com.tianji.remark.RemarkApplication</mainClass>
+                    <mainClass>com.zhixu.remark.RemarkApplication</mainClass>
                 </configuration>
             </plugin>
         </plugins>

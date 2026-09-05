@@ -102,4 +102,4 @@ spring:
 
 logging:
   level:
-    com.tianji: debug
+    com.zhixu: debug

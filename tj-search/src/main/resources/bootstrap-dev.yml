@@ -10,4 +10,4 @@ spring:
     uris: http://192.168.150.101:9200
 logging:
   level:
-    com.tianji: debug
+    com.zhixu: debug

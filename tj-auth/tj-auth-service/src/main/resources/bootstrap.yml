@@ -30,7 +30,7 @@ tj:
   swagger:
     enable: true
     enableResponseWrap: true
-    package-path: com.tianji.auth.controller
+    package-path: com.zhixu.auth.controller
     title: 知序学堂 - 权限微服务接口文档
     description: 该服务用于管理权限相关信息
     contact-name: 传智教育·研究院
