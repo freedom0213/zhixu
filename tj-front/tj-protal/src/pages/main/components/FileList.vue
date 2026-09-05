@@ -151,7 +151,7 @@ const handleScroll = () => {
 }
 
 .session-content {
-    flex-grow: 1;
+    flex: 1 1 auto;
     margin-right: 15px;
     min-width: 0;
 }
