@@ -20,8 +20,8 @@ public class AiController {
     @GetMapping("/file/page") public Map<String,Object> page() { return ok(Map.of("list", knowledge.list(), "total", knowledge.list().size())); }
     @GetMapping("/file/{id}") public Map<String,Object> get(@PathVariable String id) throws IOException { return ok(knowledge.content(id)); }
     @DeleteMapping("/file/{id}") public Map<String,Object> delete(@PathVariable String id) throws IOException { knowledge.delete(id); return ok(null); }
-    @GetMapping("/file/chat") public Map<String,Object> chat(@RequestParam(required = false) String question, @RequestParam(required = false) String message) { return ok(Map.of("content", knowledge.chat(question != null ? question : message))); }
-    @GetMapping("/chat/simple") public Map<String,Object> simple(@RequestParam(required = false) String question, @RequestParam(required = false) String message) { return chat(question, message); }
+    @GetMapping("/file/chat") public Map<String,Object> chat(@RequestParam(required = false) String question, @RequestParam(required = false) String message, @RequestParam(required = false) String sessionId) { return ok(Map.of("content", knowledge.chat(sessionId, question != null ? question : message))); }
+    @GetMapping("/chat/simple") public Map<String,Object> simple(@RequestParam(required = false) String question, @RequestParam(required = false) String message, @RequestParam(required = false) String sessionId) { return chat(question, message, sessionId); }
     @GetMapping("/session/list") public Map<String,Object> sessions() { return ok(knowledge.sessions()); }
     @PostMapping("/session") public Map<String,Object> create(@RequestBody(required = false) Map<String, Object> body,
                                                                @RequestParam(required = false) String name,
@@ -39,5 +39,5 @@ public class AiController {
         return ok(knowledge.updateSession(id, sessionName, sessionTag));
     }
     @DeleteMapping("/session/{id}") public Map<String,Object> deleteSession(@PathVariable String id) { knowledge.deleteSession(id); return ok(null); }
-    @GetMapping("/chat/records") public Map<String,Object> records() { return ok(Map.of("list", Collections.emptyList(), "total", 0)); }
+    @GetMapping("/chat/records") public Map<String,Object> records(@RequestParam(required = false) String sessionId) { List<Map<String,Object>> list = knowledge.records(sessionId); return ok(Map.of("list", list, "total", list.size())); }
 }

@@ -68,28 +68,62 @@ public class KnowledgeService {
         session.put("name", name); session.put("tag", tag); sessions.put((String) session.get("id"), session); return session;
     }
     public void deleteSession(String id) { sessions.remove(id); }
+    public List<Map<String, Object>> records(String id) {
+        Map<String, Object> session = sessions.get(id);
+        if (session == null) return Collections.emptyList();
+        @SuppressWarnings("unchecked") List<Map<String, Object>> records = (List<Map<String, Object>>) session.get("records");
+        return records == null ? Collections.emptyList() : new ArrayList<>(records);
+    }
     public Map<String, Object> updateSession(String id, String name, String tag) {
         Map<String, Object> s = sessions.get(id); if (s != null) { s.put("name", name); s.put("tag", tag); } return s;
     }
 
-    public String chat(String question) {
+    public String chat(String question) { return chat(null, question); }
+
+    public String chat(String sessionId, String question) {
         String query = question == null ? "" : question.trim();
-        String context = documents.values().stream().flatMap(t -> Arrays.stream(t.split("\\n\\s*\\n")))
+        String context = documents.entrySet().stream()
+                .filter(e -> matchesDocument(e.getKey(), query))
+                .flatMap(e -> Arrays.stream(e.getValue().split("\\n\\s*\\n")))
                 .filter(s -> containsKeyword(s, query)).limit(12).reduce((a, b) -> a + "\n\n" + b).orElse("");
-        if (context.isEmpty() && query.toLowerCase(Locale.ROOT).contains("java")) {
-            context = documents.values().stream().filter(t -> t.toLowerCase(Locale.ROOT).contains("java"))
+        if (context.isEmpty() && (query.toLowerCase(Locale.ROOT).contains("java") || query.contains("类") || query.contains("对象"))) {
+            context = documents.entrySet().stream().filter(e -> e.getKey().toLowerCase(Locale.ROOT).contains("java"))
+                    .map(Map.Entry::getValue)
                     .flatMap(t -> Arrays.stream(t.split("\\n\\s*\\n"))).limit(12)
                     .reduce((a, b) -> a + "\n\n" + b).orElse("");
         }
-        if (model == null) return context.isEmpty() ? "本地 AI 尚未配置 DeepSeek API Key，请先上传相关文档并配置密钥。" : "已检索到相关知识片段：\n\n" + context;
-        return model.generate("你是知序学堂课程助手。请优先依据参考资料回答；资料涉及相关概念时，可用简洁的基础知识补充解释，不要编造与问题无关的内容。资料确实没有涉及时，再明确说明。\n参考资料：\n" + context + "\n问题：" + question);
+        String answer = model == null ? (context.isEmpty() ? "知识库中没有找到与该问题相关的内容。" : "已检索到相关知识片段：\n\n" + context)
+                : model.generate("你是知序学堂课程助手。请优先依据参考资料回答；资料涉及相关概念时，可用简洁的基础知识补充解释，不要编造与问题无关的内容。资料确实没有涉及时，再明确说明。\n参考资料：\n" + context + "\n问题：" + question);
+        if (sessionId != null) {
+            Map<String, Object> session = sessions.get(sessionId);
+            if (session != null) {
+                @SuppressWarnings("unchecked") List<Map<String, Object>> records = (List<Map<String, Object>>) session.computeIfAbsent("records", k -> new ArrayList<>());
+                records.add(record("USER", question)); records.add(record("AI", answer));
+            }
+        }
+        return answer;
+    }
+
+    private Map<String, Object> record(String type, String text) {
+        Map<String, Object> content = new LinkedHashMap<>(); content.put("type", type);
+        if ("USER".equals(type)) content.put("contents", List.of(Map.of("text", text))); else content.put("text", text);
+        return Map.of("content", new com.fasterxml.jackson.databind.ObjectMapper().valueToTree(content).toString(), "segmentIndex", System.currentTimeMillis());
+    }
+
+    private boolean matchesDocument(String name, String query) {
+        String q = query.toLowerCase(Locale.ROOT);
+        if (q.contains("python") || q.contains("蟒蛇")) return name.toLowerCase(Locale.ROOT).contains("python");
+        if (q.contains("java") || q.contains("类") || q.contains("对象") || q.contains("集合")) return name.toLowerCase(Locale.ROOT).contains("java");
+        return true;
     }
 
     private boolean containsKeyword(String text, String question) {
         String normalizedText = text.toLowerCase(Locale.ROOT);
         for (String token : question.toLowerCase(Locale.ROOT).split("\\s+|[，。！？、]")) {
             if (token.length() > 1 && normalizedText.contains(token)) return true;
-            for (int i = 0; i + 1 < token.length(); i++) if (normalizedText.contains(token.substring(i, i + 2))) return true;
+            if (token.length() >= 2 && token.chars().allMatch(c -> c > 127)) {
+                for (int i = 0; i + 1 < token.length(); i++) if (normalizedText.contains(token.substring(i, i + 2))) return true;
+            }
         }
         return false;
     }
