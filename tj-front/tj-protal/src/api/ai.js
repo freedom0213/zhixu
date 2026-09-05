@@ -46,7 +46,8 @@ export const memoryChatRedis = (params, signal) =>
         url: `${AI_API_PREFIX}/chat/simple`,
         method: 'get',
         params,
-        signal
+        signal,
+        timeout: 60000
     })
 //AI流式聊天接口
 export const memoryChatRedisStream = (params) =>
@@ -80,7 +81,8 @@ export const chatByMarkdownDoc = (params, signal) =>
     url: `${AI_API_PREFIX}/file/chat`,
     method: 'get',
     params,
-    signal
+    signal,
+    timeout: 60000
     });
 
 // 分页查询用户知识库文件列表
