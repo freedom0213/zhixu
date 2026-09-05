@@ -41,11 +41,12 @@ export const getChatRecord = (params) =>
     })
 
 // AI聊天接口
-export const memoryChatRedis = (params) =>
+export const memoryChatRedis = (params, signal) =>
     request({
         url: `${AI_API_PREFIX}/chat/simple`,
         method: 'get',
-        params
+        params,
+        signal
     })
 //AI流式聊天接口
 export const memoryChatRedisStream = (params) =>
@@ -74,11 +75,12 @@ export const uploadMarkdown = (file, level = 2) => {
 };
 
 // 根据知识库内容对话
-export const chatByMarkdownDoc = (params) =>
+export const chatByMarkdownDoc = (params, signal) =>
     request({
     url: `${AI_API_PREFIX}/file/chat`,
     method: 'get',
-    params
+    params,
+    signal
     });
 
 // 分页查询用户知识库文件列表
