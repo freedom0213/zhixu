@@ -19,7 +19,7 @@ public class AiController {
         return result;
     }
     @PostMapping("/file/upload") public Map<String,Object> upload(@RequestParam MultipartFile file) throws IOException { return ok(knowledge.upload(file)); }
-    @GetMapping("/file/page") public Map<String,Object> page() { return ok(Map.of("list", knowledge.list(), "total", knowledge.list().size())); }
+    @GetMapping("/file/page") public Map<String,Object> page() { return ok(Map.of("list", knowledge.list(), "total", knowledge.list().size(), "chunkCount", knowledge.chunkTotal())); }
     @GetMapping("/file/{id}") public Map<String,Object> get(@PathVariable String id) throws IOException { return ok(knowledge.content(id)); }
     @DeleteMapping("/file/{id}") public Map<String,Object> delete(@PathVariable String id) throws IOException { knowledge.delete(id); return ok(null); }
     @GetMapping("/file/chat") public Map<String,Object> chat(@RequestParam(required = false) String question, @RequestParam(required = false) String message, @RequestParam(required = false) String sessionId) { return ok(Map.of("content", knowledge.chat(sessionId, question != null ? question : message))); }
