@@ -3,6 +3,8 @@ package com.zhixu.ai;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.MediaType;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.IOException;
 import java.util.*;
 
@@ -21,7 +23,19 @@ public class AiController {
     @GetMapping("/file/{id}") public Map<String,Object> get(@PathVariable String id) throws IOException { return ok(knowledge.content(id)); }
     @DeleteMapping("/file/{id}") public Map<String,Object> delete(@PathVariable String id) throws IOException { knowledge.delete(id); return ok(null); }
     @GetMapping("/file/chat") public Map<String,Object> chat(@RequestParam(required = false) String question, @RequestParam(required = false) String message, @RequestParam(required = false) String sessionId) { return ok(Map.of("content", knowledge.chat(sessionId, question != null ? question : message))); }
+    @GetMapping(value = "/file/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter fileChatStream(@RequestParam(required = false) String question,
+                                     @RequestParam(required = false) String message,
+                                     @RequestParam(required = false) String sessionId) {
+        return stream(sessionId, question != null ? question : message);
+    }
     @GetMapping("/chat/simple") public Map<String,Object> simple(@RequestParam(required = false) String question, @RequestParam(required = false) String message, @RequestParam(required = false) String sessionId) { return chat(question, message, sessionId); }
+    @GetMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter chatStream(@RequestParam(required = false) String question,
+                                 @RequestParam(required = false) String message,
+                                 @RequestParam(required = false) String sessionId) {
+        return stream(sessionId, question != null ? question : message);
+    }
     @GetMapping("/session/list") public Map<String,Object> sessions() { return ok(knowledge.sessions()); }
     @PostMapping("/session") public Map<String,Object> create(@RequestBody(required = false) Map<String, Object> body,
                                                                @RequestParam(required = false) String name,
@@ -40,4 +54,23 @@ public class AiController {
     }
     @DeleteMapping("/session/{id}") public Map<String,Object> deleteSession(@PathVariable String id) { knowledge.deleteSession(id); return ok(null); }
     @GetMapping("/chat/records") public Map<String,Object> records(@RequestParam(required = false) String sessionId) { List<Map<String,Object>> list = knowledge.records(sessionId); return ok(Map.of("list", list, "total", list.size())); }
+
+    private SseEmitter stream(String sessionId, String question) {
+        SseEmitter emitter = new SseEmitter(120_000L);
+        emitter.onTimeout(emitter::complete);
+        emitter.onError(error -> emitter.completeWithError(error));
+        knowledge.streamChat(sessionId, question,
+                token -> {
+                    try { emitter.send(SseEmitter.event().data(token)); }
+                    catch (IOException error) { emitter.completeWithError(error); }
+                },
+                answer -> {
+                    try {
+                        emitter.send(SseEmitter.event().data("[DONE]"));
+                        emitter.complete();
+                    } catch (IOException error) { emitter.completeWithError(error); }
+                },
+                emitter::completeWithError);
+        return emitter;
+    }
 }
