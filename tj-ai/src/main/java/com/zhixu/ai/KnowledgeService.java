@@ -1,10 +1,13 @@
 package com.zhixu.ai;
 
+import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.ChatLanguageModel;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -13,8 +16,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
@@ -26,10 +29,14 @@ public class KnowledgeService {
     private final AtomicLong recordSequence = new AtomicLong();
     private final ChatLanguageModel model;
     private final StreamingChatLanguageModel streamingModel;
+    private final EmbeddingModel embeddingModel;
+    private final ChunkIndex chunkIndex;
+    private final boolean embeddingEnabled;
 
     public KnowledgeService(AiProperties properties) {
         this.properties = properties;
         Path dir = Paths.get(properties.getDataDir(), "documents");
+        Path indexPath = Paths.get(properties.getDataDir(), "index", "chunks.json");
         try {
             Files.createDirectories(dir);
             try (var paths = Files.list(dir)) {
@@ -38,6 +45,8 @@ public class KnowledgeService {
                 });
             }
         } catch (IOException ignored) { }
+        this.chunkIndex = new ChunkIndex(indexPath);
+
         boolean configured = properties.isEnabled() && properties.getApiKey() != null
                 && !properties.getApiKey().isBlank() && !"your key".equalsIgnoreCase(properties.getApiKey());
         this.model = configured
@@ -45,6 +54,17 @@ public class KnowledgeService {
                 : null;
         this.streamingModel = configured
                 ? OpenAiStreamingChatModel.builder().apiKey(properties.getApiKey()).baseUrl(properties.getBaseUrl()).modelName(properties.getModel()).build()
+                : null;
+        String embUrl = (properties.getEmbeddingBaseUrl() == null || properties.getEmbeddingBaseUrl().isBlank())
+                ? properties.getBaseUrl()
+                : properties.getEmbeddingBaseUrl();
+        this.embeddingEnabled = configured && properties.getEmbeddingModel() != null && !properties.getEmbeddingModel().isBlank();
+        this.embeddingModel = this.embeddingEnabled
+                ? OpenAiEmbeddingModel.builder()
+                    .apiKey(properties.getApiKey())
+                    .baseUrl(embUrl)
+                    .modelName(properties.getEmbeddingModel())
+                    .build()
                 : null;
     }
 
@@ -58,15 +78,24 @@ public class KnowledgeService {
         String text = new String(file.getBytes(), StandardCharsets.UTF_8);
         Files.writeString(path, text);
         documents.put(safe, text);
-        return Map.of("id", safe, "name", name, "size", text.length());
+
+        // 结构化切块 + embedding
+        List<KnowledgeChunk> chunks = buildChunks(safe, name, text);
+        if (embeddingEnabled) embedChunks(chunks);
+        chunkIndex.addAll(safe, name, chunks);
+
+        return Map.of("id", safe, "name", name, "size", text.length(), "chunkCount", chunks.size());
     }
+
+    public int chunkTotal() { return chunkIndex.size(); }
 
     public List<Map<String, Object>> list() {
         List<Map<String, Object>> result = new ArrayList<>();
         documents.forEach((name, text) -> {
             int separator = name.length() > 37 && name.charAt(36) == '-' ? 36 : name.indexOf('-');
             String displayName = separator >= 0 && separator + 1 < name.length() ? name.substring(separator + 1) : name;
-            result.add(Map.of("id", name, "name", displayName, "size", text.length()));
+            int chunkCount = (int) chunkIndex.all().stream().filter(c -> name.equals(c.getDocId())).count();
+            result.add(Map.of("id", name, "name", displayName, "size", text.length(), "chunkCount", chunkCount));
         });
         return result;
     }
@@ -80,6 +109,7 @@ public class KnowledgeService {
     public void delete(String id) throws IOException {
         documents.remove(id);
         Files.deleteIfExists(Paths.get(properties.getDataDir(), "documents", id));
+        chunkIndex.removeByDoc(id);
     }
 
     public List<Map<String, Object>> sessions() { return new ArrayList<>(sessions.values()); }
@@ -113,12 +143,9 @@ public class KnowledgeService {
 
     public String chat(String sessionId, String question) {
         String query = question == null ? "" : question.trim();
-        return answerWithContext(sessionId, query, findContext(query));
-    }
-
-    private String answerWithContext(String sessionId, String question, String context) {
-        String answer = model == null ? localAnswer(context) : model.generate(buildPrompt(question, context));
-        appendRecords(sessionId, question, answer);
+        List<KnowledgeChunk> ctx = retrieve(query);
+        String answer = answerWithContext(ctx, query);
+        appendRecords(sessionId, query, answer);
         return answer;
     }
 
@@ -126,10 +153,9 @@ public class KnowledgeService {
     public void streamChat(String sessionId, String question, Consumer<String> onToken,
                            Consumer<String> onComplete, Consumer<Throwable> onError) {
         String query = question == null ? "" : question.trim();
-        String context = findContext(query);
+        List<KnowledgeChunk> ctx = retrieve(query);
         if (streamingModel == null) {
-            String answer = localAnswer(context);
-            // Keep the offline demo visually streaming as well, without requiring a model key.
+            String answer = localAnswer(ctx);
             CompletableFuture.runAsync(() -> {
                 try {
                     for (int start = 0; start < answer.length(); start += 12) {
@@ -146,7 +172,7 @@ public class KnowledgeService {
         }
         StringBuilder answer = new StringBuilder();
         try {
-            streamingModel.generate(buildPrompt(query, context), new StreamingResponseHandler<AiMessage>() {
+            streamingModel.generate(buildPrompt(query, ctx), new StreamingResponseHandler<AiMessage>() {
                 @Override public void onNext(String token) {
                     if (token == null || token.isEmpty()) return;
                     answer.append(token);
@@ -166,31 +192,119 @@ public class KnowledgeService {
         }
     }
 
-    private String findContext(String query) {
-        if (query.contains("集合")) {
-            String section = collectionSection();
-            if (!section.isBlank()) return section;
+    /** 检索：embedding 启用时走向量 topK，未启用或失败时走关键词兜底。 */
+    private List<KnowledgeChunk> retrieve(String query) {
+        if (query.isEmpty() || chunkIndex.isEmpty()) return Collections.emptyList();
+        if (embeddingEnabled) {
+            try {
+                float[] q = embed(query);
+                List<KnowledgeChunk> all = chunkIndex.all();
+                int k = Math.min(properties.getTopK(), all.size());
+                if (k <= 0) return Collections.emptyList();
+                PriorityQueue<Scored> heap = new PriorityQueue<>(Comparator.comparingDouble(Scored::score));
+                for (KnowledgeChunk c : all) {
+                    if (c.getEmbedding() == null) continue;
+                    double s = cosine(q, c.getEmbedding());
+                    if (heap.size() < k) heap.offer(new Scored(c, s));
+                    else if (s > heap.peek().score) { heap.poll(); heap.offer(new Scored(c, s)); }
+                }
+                List<KnowledgeChunk> out = new ArrayList<>();
+                while (!heap.isEmpty()) out.add(heap.poll().chunk);
+                Collections.reverse(out);
+                // 关键词兜底追加（去重）
+                Set<String> seen = new HashSet<>();
+                for (KnowledgeChunk c : out) seen.add(c.getChunkId());
+                for (KnowledgeChunk c : chunkIndex.keywordSearch(query, properties.getKeywordFallbackK())) {
+                    if (seen.add(c.getChunkId())) out.add(c);
+                }
+                return out;
+            } catch (Throwable ignored) {
+                // embedding 失败 → 关键词兜底
+            }
         }
-        String context = documents.entrySet().stream()
-                .filter(e -> matchesDocument(e.getKey(), query))
-                .flatMap(e -> Arrays.stream(e.getValue().split("\\n\\s*\\n")))
-                .filter(s -> containsKeyword(s, query)).limit(12)
-                .reduce((a, b) -> a + "\n\n" + b).orElse("");
-        if (context.isEmpty() && (query.toLowerCase(Locale.ROOT).contains("java") || query.contains("类") || query.contains("对象"))) {
-            context = documents.entrySet().stream().filter(e -> e.getKey().toLowerCase(Locale.ROOT).contains("java"))
-                    .map(Map.Entry::getValue).flatMap(t -> Arrays.stream(t.split("\\n\\s*\\n")))
-                    .filter(s -> query.contains("集合") ? s.contains("集合") || s.contains("List") || s.contains("Map") || s.contains("ArrayList") : true)
-                    .limit(12).reduce((a, b) -> a + "\n\n" + b).orElse("");
-        }
-        return context;
+        return chunkIndex.keywordSearch(query, properties.getTopK() + properties.getKeywordFallbackK());
     }
 
-    private String buildPrompt(String question, String context) {
-        return "你是知序学堂课程助手。请优先依据参考资料回答；资料涉及相关概念时，可用简洁的基础知识补充解释，不要编造与问题无关的内容。资料确实没有涉及时，再明确说明。\n参考资料：\n" + context + "\n问题：" + question;
+    private float[] embed(String text) {
+        if (embeddingModel == null) return new float[0];
+        Embedding e = embeddingModel.embed(text).content();
+        return e.vector();
     }
 
-    private String localAnswer(String context) {
-        return context.isEmpty() ? "知识库中没有找到与该问题相关的内容。" : "已检索到相关知识片段：\n\n" + context;
+    private void embedChunks(List<KnowledgeChunk> chunks) {
+        if (embeddingModel == null || chunks == null || chunks.isEmpty()) return;
+        try {
+            for (KnowledgeChunk c : chunks) {
+                if (c.getText() == null || c.getText().isEmpty()) continue;
+                c.setEmbedding(embed(c.getText()));
+            }
+        } catch (Throwable ignored) {
+            // 单个失败不阻断，关键词兜底仍可工作
+        }
+    }
+
+    private List<KnowledgeChunk> buildChunks(String docId, String docName, String text) {
+        List<MarkdownChunker.RawChunk> raws = MarkdownChunker.chunk(
+                text, docName, properties.getChunkSize(), properties.getChunkOverlap());
+        List<KnowledgeChunk> out = new ArrayList<>(raws.size());
+        for (MarkdownChunker.RawChunk r : raws) {
+            String chunkText = r.text == null ? "" : r.text;
+            List<String> kws = MarkdownChunker.keywords(chunkText);
+            out.add(new KnowledgeChunk(
+                    UUID.randomUUID().toString(),
+                    docId, docName,
+                    r.sectionPath,
+                    r.heading,
+                    0, chunkText.length(),
+                    chunkText, kws,
+                    chunkText.length() / 2,
+                    null
+            ));
+        }
+        return out;
+    }
+
+    private double cosine(float[] a, float[] b) {
+        if (a == null || b == null || a.length == 0 || a.length != b.length) return 0d;
+        double dot = 0d, na = 0d, nb = 0d;
+        for (int i = 0; i < a.length; i++) { dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
+        if (na == 0d || nb == 0d) return 0d;
+        return dot / (Math.sqrt(na) * Math.sqrt(nb));
+    }
+
+    private String answerWithContext(List<KnowledgeChunk> ctx, String question) {
+        if (model == null) return localAnswer(ctx);
+        return model.generate(buildPrompt(question, ctx));
+    }
+
+    private String buildPrompt(String question, List<KnowledgeChunk> ctx) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("你是知序学堂课程助手。请优先依据参考资料回答；资料涉及相关概念时，");
+        sb.append("可用简洁的基础知识补充解释，不要编造与问题无关的内容。资料确实没有涉及时，再明确说明。\n参考资料：\n");
+        if (ctx == null || ctx.isEmpty()) {
+            sb.append("（无）\n");
+        } else {
+            for (KnowledgeChunk c : ctx) {
+                String ref = (c.getSectionPath() == null || c.getSectionPath().isEmpty())
+                        ? c.getDocName()
+                        : String.join(" > ", c.getSectionPath());
+                sb.append("[").append(ref).append("] ").append(c.getText()).append("\n\n");
+            }
+        }
+        sb.append("问题：").append(question);
+        return sb.toString();
+    }
+
+    private String localAnswer(List<KnowledgeChunk> ctx) {
+        if (ctx == null || ctx.isEmpty()) return "知识库中没有找到与该问题相关的内容。";
+        StringBuilder sb = new StringBuilder("已检索到相关知识片段：\n\n");
+        for (KnowledgeChunk c : ctx) {
+            String ref = (c.getSectionPath() == null || c.getSectionPath().isEmpty())
+                    ? c.getDocName()
+                    : String.join(" > ", c.getSectionPath());
+            sb.append("[").append(ref).append("] ").append(c.getText()).append("\n\n");
+        }
+        return sb.toString();
     }
 
     private void appendRecords(String sessionId, String question, String answer) {
@@ -204,40 +318,16 @@ public class KnowledgeService {
         }
     }
 
-    private String collectionSection() {
-        for (String text : documents.values()) {
-            int start = text.indexOf("集合框架");
-            if (start < 0) continue;
-            int sectionStart = text.lastIndexOf("##", start);
-            int next = text.indexOf("\n## ", start + 2);
-            return text.substring(Math.max(0, sectionStart), next > 0 ? next : text.length()).trim();
-        }
-        return "";
-    }
-
     private Map<String, Object> record(String type, String text) {
         Map<String, Object> content = new LinkedHashMap<>(); content.put("type", type);
         if ("USER".equals(type)) content.put("contents", List.of(Map.of("text", text))); else content.put("text", text);
         return Map.of("content", new com.fasterxml.jackson.databind.ObjectMapper().valueToTree(content).toString(), "segmentIndex", recordSequence.incrementAndGet());
     }
 
-    private boolean matchesDocument(String name, String query) {
-        String q = query.toLowerCase(Locale.ROOT);
-        if (q.contains("python") || q.contains("蟒蛇")) return name.toLowerCase(Locale.ROOT).contains("python");
-        if (q.contains("java") || q.contains("类") || q.contains("对象") || q.contains("集合")) return name.toLowerCase(Locale.ROOT).contains("java");
-        return true;
-    }
-
-    private boolean containsKeyword(String text, String question) {
-        String normalizedText = text.toLowerCase(Locale.ROOT);
-        String normalizedQuestion = question.toLowerCase(Locale.ROOT).replaceAll("([a-z0-9]+)(?=[\\u4e00-\\u9fff])", "$1 ")
-                .replaceAll("(?<=[\\u4e00-\\u9fff])([a-z0-9]+)", " $1");
-        for (String token : normalizedQuestion.split("\\s+|[，。！？、]")) {
-            if (token.length() > 1 && normalizedText.contains(token)) return true;
-            if (token.length() >= 2 && token.chars().allMatch(c -> c > 127)) {
-                for (int i = 0; i + 1 < token.length(); i++) if (normalizedText.contains(token.substring(i, i + 2))) return true;
-            }
-        }
-        return false;
+    private static final class Scored {
+        final KnowledgeChunk chunk;
+        final double score;
+        Scored(KnowledgeChunk c, double s) { this.chunk = c; this.score = s; }
+        double score() { return score; }
     }
 }
