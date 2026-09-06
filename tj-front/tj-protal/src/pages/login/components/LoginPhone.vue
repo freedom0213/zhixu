@@ -16,7 +16,10 @@
           <el-input 
             v-model="fromData.password" 
             placeholder="请输入验证码" 
-            type="number"
+            type="text"
+            inputmode="numeric"
+            maxlength="4"
+            @wheel.prevent
           />
           <span 
             class="bt" 

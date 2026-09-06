@@ -18,7 +18,7 @@
             />
             
             <!-- 聊天区域 -->
-            <div class="chatItems container bg-wt ">
+            <div class="chatItems bg-wt">
                 
                 <!-- 聊天消息显示区域 -->
                 <div class="chatMessages" ref="chatMessages" @scroll="handleScroll">
@@ -74,7 +74,7 @@
 <script setup>
 import { ref, onMounted, nextTick } from 'vue';
 import { ElMessage } from 'element-plus';
-import { getUserSessionList, getChatRecord, chatByMarkdownDoc, memoryChatRedis } from '@/api/ai.js';
+import { getUserSessionList, getChatRecord } from '@/api/ai.js';
 import Breadcrumb from '@/components/Breadcrumb.vue';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
 import VueMarkdown from 'vue3-markdown-it';
@@ -161,8 +161,12 @@ const fetchUserSessionList = async () => {
 const selectSession = async (sessionId) => {
     requestGeneration++;
     const generation = requestGeneration;
-    if (abortController.value) abortController.value.abort();
+    if (abortController.value) {
+        abortController.value.abort();
+        abortController.value = null;
+    }
     isLoading.value = false;
+    isStreaming.value = false;
     selectedSessionId.value = sessionId;
     currentPage.value = 1;
     chatHistory.value = [];
@@ -223,6 +227,7 @@ const selectMode = (mode) => {
 const stopStream = () => {
     if (abortController.value) {
         abortController.value.abort();
+        abortController.value = null;
         isStreaming.value = false;
         isLoading.value = false;
 
@@ -231,7 +236,6 @@ const stopStream = () => {
             lastMessage.isTyping = false;
         }
 
-        abortController.value = new AbortController(); // 重置 abortController
         ElMessage({
             message: '已停止当前对话',
             type: 'info'
@@ -263,7 +267,7 @@ const sendMessage = async () => {
 
     await scrollToBottom();
     try {
-        isStreaming.value = false;
+        isStreaming.value = true;
         // 添加占位消息
         chatHistory.value.push({
             type: 'assistant',
@@ -278,20 +282,49 @@ const sendMessage = async () => {
 
         const assistantMessage = chatHistory.value[chatHistory.value.length - 1];
         let content = '';
-        let thinkingContent = '';
-        let inThinkingTag = false;
-
-        const request = currentMode.value === 'knowledge' ? chatByMarkdownDoc : memoryChatRedis;
-        const response = await request({ message: userMessage, sessionId: selectedSessionId.value }, controller.signal);
-        if (generation !== requestGeneration) return;
-        const answer = response?.data?.content || response?.content || response?.data?.answer || '';
-        if (!answer) throw new Error(response?.msg || 'AI 未返回内容');
-        const processed = processContent(answer);
-        assistantMessage.content = answer;
-        assistantMessage.processedContent = processed.content;
-        assistantMessage.showMarkdown = processed.showMarkdown;
-        assistantMessage.thinkingContent = processed.thinkingContent;
-        assistantMessage.isTyping = false;
+        let completed = false;
+        const endpoint = currentMode.value === 'knowledge' ? '/ct/file/chat/stream' : '/ct/chat/stream';
+        const params = new URLSearchParams({
+            message: userMessage,
+            sessionId: selectedSessionId.value
+        });
+        await fetchEventSource(`${host}${endpoint}?${params.toString()}`, {
+            method: 'GET',
+            signal: controller.signal,
+            headers: {
+                Accept: 'text/event-stream',
+                Authorization: TOKEN || ''
+            },
+            async onopen(response) {
+                if (!response.ok) throw new Error(`AI 服务响应 ${response.status}`);
+            },
+            onmessage(event) {
+                if (generation !== requestGeneration) return;
+                if (event.data === '[DONE]') {
+                    completed = true;
+                    assistantMessage.isTyping = false;
+                    return;
+                }
+                if (!event.data) return;
+                content += event.data;
+                const processed = processContent(content);
+                assistantMessage.content = content;
+                assistantMessage.processedContent = processed.content;
+                assistantMessage.showMarkdown = processed.showMarkdown;
+                assistantMessage.thinkingContent = processed.thinkingContent;
+                scrollToBottom();
+            },
+            onclose() {
+                if (!completed) throw new Error('AI 流式连接意外关闭');
+            },
+            onerror(error) {
+                throw error;
+            }
+        });
+        if (generation === requestGeneration) {
+            assistantMessage.isTyping = false;
+            if (!content) throw new Error('AI 未返回内容');
+        }
     } catch (error) {
         console.error('请求失败:', error);
         if (generation !== requestGeneration || error.name === 'AbortError' || error.code === 'ERR_CANCELED') return;
@@ -463,19 +496,27 @@ onMounted(async () => {
     margin-bottom: 20px;
     .chatLayout {
         display: flex;
+        align-items: flex-start;
+        min-width: 0;
         // border: 1px solid grey;
     }
 
     .chatItems {
-        flex: 2; /* 减小聊天区域的宽度 */
+        flex: 1 1 auto;
+        width: min(100%, 1080px);
+        max-width: 1080px;
+        min-width: 0;
+        margin: 0 auto;
+        box-sizing: border-box;
         display: flex;
         flex-wrap: wrap;
         justify-content: space-between;
-        padding: 50px 50px 20px 5px;
+        padding: 40px 24px 20px;
     }
 
     .chatMessages {
         width: 100%;
+        box-sizing: border-box;
         height: 400px; /* 减小聊天消息显示区域的高度 */
         overflow-y: auto;
         border: 1px solid #EEEEEE;

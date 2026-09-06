@@ -15,7 +15,14 @@
       </el-form-item>
       <el-form-item prop="code" label="">
         <div class="fx-sb">
-          <el-input v-model="fromData.code" placeholder="请确认短信验证码" />
+          <el-input
+            v-model="fromData.code"
+            placeholder="请确认短信验证码"
+            type="text"
+            inputmode="numeric"
+            maxlength="4"
+            @wheel.prevent
+          />
           <span 
             class="bt" 
             :class="isSending ? 'bt-grey' : 'bt-primary'" 

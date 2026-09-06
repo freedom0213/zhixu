@@ -20,7 +20,10 @@
             <el-input 
               v-model="fromData.code" 
               placeholder="请输入短信验证码" 
-              type="number"
+              type="text"
+              inputmode="numeric"
+              maxlength="4"
+              @wheel.prevent
             />
             <span 
               class="bt" 
