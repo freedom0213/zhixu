@@ -60,9 +60,12 @@ public class KnowledgeService {
                 ? properties.getBaseUrl()
                 : properties.getEmbeddingBaseUrl();
         this.embeddingEnabled = configured && properties.getEmbeddingModel() != null && !properties.getEmbeddingModel().isBlank();
+        String embKey = (properties.getEmbeddingApiKey() == null || properties.getEmbeddingApiKey().isBlank())
+                ? properties.getApiKey()
+                : properties.getEmbeddingApiKey();
         this.embeddingModel = this.embeddingEnabled
                 ? OpenAiEmbeddingModel.builder()
-                    .apiKey(properties.getApiKey())
+                    .apiKey(embKey)
                     .baseUrl(embUrl)
                     .modelName(properties.getEmbeddingModel())
                     .build()

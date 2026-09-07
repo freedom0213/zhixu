@@ -17,6 +17,8 @@ public class AiProperties {
     private String embeddingModel = "deepseek-embedding";
     /** Embedding 接口地址，默认与 baseUrl 同源 + /v1。 */
     private String embeddingBaseUrl = "";
+    /** Embedding 服务独立 API Key；留空时复用 api-key（聊天与 embedding 同一服务商时）。 */
+    private String embeddingApiKey = "";
     /** 切块窗口大小（字符数）。 */
     private int chunkSize = 400;
     /** 相邻窗口重叠字符数。 */
