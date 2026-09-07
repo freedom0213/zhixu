@@ -36,6 +36,7 @@ public class KnowledgeService {
     private final EmbeddingModel embeddingModel;
     private final ChunkIndex chunkIndex;
     private final PgVectorStore vectorStore;
+    private final RerankClient rerankClient;
     private final boolean embeddingEnabled;
 
     public KnowledgeService(AiProperties properties) {
@@ -84,6 +85,7 @@ public class KnowledgeService {
         this.vectorStore = properties.isVectorStoreEnabled() && this.embeddingEnabled
                 ? new PgVectorStore(properties)
                 : null;
+        this.rerankClient = new RerankClient(properties);
     }
 
     private void loadDocument(Path p, Long userId) {
@@ -275,13 +277,15 @@ public class KnowledgeService {
                 if (vectorStore != null && vectorStore.isAvailable()) {
                     Map<String, KnowledgeChunk> byId = new HashMap<>();
                     for (KnowledgeChunk c : mine) byId.put(c.getChunkId(), c);
-                    for (PgVectorStore.ScoredId s : vectorStore.search(q, properties.getTopK())) {
+                    int candidateK = Math.max(properties.getTopK(), properties.getRerankCandidateK());
+                    for (PgVectorStore.ScoredId s : vectorStore.search(q, candidateK)) {
                         KnowledgeChunk c = byId.get(s.chunkId);
                         if (c != null) out.add(c);
                     }
                 } else {
                     // 本地 cosine 内存检索（pgvector 不可用时的降级）
-                    int k = Math.min(properties.getTopK(), mine.size());
+                    int k = Math.max(properties.getTopK(), properties.getRerankCandidateK());
+                    k = Math.min(k, mine.size());
                     if (k <= 0) return Collections.emptyList();
                     PriorityQueue<Scored> heap = new PriorityQueue<>(Comparator.comparingDouble(Scored::score));
                     for (KnowledgeChunk c : mine) {
@@ -299,7 +303,7 @@ public class KnowledgeService {
                 for (KnowledgeChunk c : mine) {
                     if (keywordHit(c, query) && seen.add(c.getChunkId())) out.add(c);
                 }
-                return out;
+                return rerank(query, out);
             } catch (Throwable ignored) {
                 // embedding 失败 → 关键词兜底
             }
@@ -324,6 +328,35 @@ public class KnowledgeService {
         Matcher tokenM = Pattern.compile("[a-z0-9]{2,}").matcher(lower);
         while (tokenM.find()) if (kws.contains(tokenM.group())) return true;
         return false;
+    }
+
+    /**
+     * 检索结果重排：把候选 chunk 按 query 相关性重新打分排序，取前 rerankTopN。
+     * 未启用 rerank 或调用失败时，按原顺序截取前 topK 条返回（不破坏现有行为）。
+     */
+    private List<KnowledgeChunk> rerank(String query, List<KnowledgeChunk> candidates) {
+        if (candidates == null || candidates.isEmpty()) return candidates;
+        if (!rerankClient.isEnabled()) {
+            return candidates.size() <= properties.getTopK()
+                    ? candidates
+                    : candidates.subList(0, properties.getTopK());
+        }
+        int topN = Math.min(properties.getRerankTopN(), candidates.size());
+        List<String> docs = new ArrayList<>(candidates.size());
+        for (KnowledgeChunk c : candidates) docs.add(c.getText() == null ? "" : c.getText());
+        List<Integer> order = rerankClient.rerank(query, docs, topN);
+        if (order == null || order.isEmpty()) {
+            return candidates.size() <= topN ? candidates : candidates.subList(0, topN);
+        }
+        List<KnowledgeChunk> out = new ArrayList<>(order.size());
+        for (Integer idx : order) {
+            if (idx != null && idx >= 0 && idx < candidates.size()) out.add(candidates.get(idx));
+            if (out.size() >= topN) break;
+        }
+        if (out.isEmpty()) {
+            return candidates.size() <= topN ? candidates : candidates.subList(0, topN);
+        }
+        return out;
     }
 
     private float[] embed(String text) {

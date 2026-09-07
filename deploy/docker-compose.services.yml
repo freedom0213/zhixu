@@ -203,6 +203,11 @@ services:
       TJ_PG_DATABASE: ${TJ_PG_DATABASE:-tianji}
       TJ_PG_USER: ${TJ_PG_USER:-tianji}
       TJ_PG_PASSWORD: ${TJ_PG_PASSWORD:-tianji123}
+      TJ_AI_RERANK_MODEL: ${TJ_AI_RERANK_MODEL:-}
+      TJ_AI_RERANK_BASE_URL: ${TJ_AI_RERANK_BASE_URL:-}
+      TJ_AI_RERANK_API_KEY: ${TJ_AI_RERANK_API_KEY:-}
+      TJ_AI_RERANK_CANDIDATE_K: ${TJ_AI_RERANK_CANDIDATE_K:-10}
+      TJ_AI_RERANK_TOP_N: ${TJ_AI_RERANK_TOP_N:-3}
     build:
       context: ..
       dockerfile: deploy/service.Dockerfile
