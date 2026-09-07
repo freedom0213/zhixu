@@ -64,21 +64,25 @@
                         <el-button slot="trigger" type="primary">选取文件</el-button>
                     </el-upload>
                 </el-form-item>
-                <div style="text-align: left;margin-left: 80px;" class="el-upload__tip">请上传2MB以内的Markdown 文件</div>
-                <el-alert
-                    style="margin-left: 80px; margin-top: 4px;"
-                    type="info"
-                    :closable="false"
-                    show-icon
-                    title="请上传标准 Markdown 文件"
-                    description="使用 # / ## / ### 三级标题分层，代码块用 ``` 围起来。非标准格式可能导致 AI 无法按章节精准检索。"
-                />
+                <div class="el-upload__tip">请上传2MB以内的Markdown 文件</div>
+                <el-form-item>
+                    <el-alert
+                        type="info"
+                        :closable="false"
+                        show-icon
+                        style="width: 100%;"
+                    >
+                        <template #title>
+                            请使用 # / ## / ### 三级标题分层，代码块用 ``` 围起（非标准格式可能影响检索）
+                        </template>
+                    </el-alert>
+                </el-form-item>
                 <el-form-item  prop="fileName">
                 <div v-if="addFormData.fileName">{{ addFormData.fileName }}</div>
             </el-form-item>
                 <el-form-item label="切割等级" prop="level">
                     <el-input-number
-                        v-model="addFormData.level" 
+                        v-model="addFormData.level"
                         type="number"
                         max="5"
                         min="1"
@@ -100,9 +104,11 @@
                 :closable="false"
                 show-icon
                 style="margin-bottom: 12px;"
-                title="编辑时请保持标题层级 ## / ###"
-                description="非标准 Markdown 可能导致 AI 无法按章节精准检索。"
-            />
+            >
+                <template #title>
+                    编辑时请保持标题层级 ## / ###（非标准格式可能影响检索）
+                </template>
+            </el-alert>
             <el-form :data="editFormData" :rules="editFormRules" ref="editFormRef" label-width="80px">
                 <el-form-item label="文件内容">
                     <el-input
