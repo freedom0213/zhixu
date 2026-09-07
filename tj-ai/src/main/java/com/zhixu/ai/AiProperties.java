@@ -38,4 +38,14 @@ public class AiProperties {
     private String pgUser = "tianji";
     private String pgPassword = "tianji123";
     private String pgTable = "knowledge_chunks";
+    /** Rerank 模型名（OpenAI 兼容协议，如 BAAI/bge-reranker-v2-m3）；留空则不启用重排。 */
+    private String rerankModel = "";
+    /** Rerank 接口地址；留空复用 baseUrl。 */
+    private String rerankBaseUrl = "";
+    /** Rerank 服务独立 API Key；留空复用 api-key。 */
+    private String rerankApiKey = "";
+    /** 向量召回后送入 rerank 的候选条数；rerank 后取 topN 喂给 LLM。 */
+    private int rerankCandidateK = 10;
+    /** Rerank 后真正进入 prompt 的 chunk 数（建议 <= topK）。 */
+    private int rerankTopN = 3;
 }

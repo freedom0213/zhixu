@@ -23,3 +23,8 @@ tj:
     pg-user: ${TJ_PG_USER:tianji}
     pg-password: ${TJ_PG_PASSWORD:tianji123}
     pg-table: ${TJ_PG_TABLE:knowledge_chunks}
+    rerank-model: ${TJ_AI_RERANK_MODEL:}
+    rerank-base-url: ${TJ_AI_RERANK_BASE_URL:}
+    rerank-api-key: ${TJ_AI_RERANK_API_KEY:}
+    rerank-candidate-k: ${TJ_AI_RERANK_CANDIDATE_K:10}
+    rerank-top-n: ${TJ_AI_RERANK_TOP_N:3}
