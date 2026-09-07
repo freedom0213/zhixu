@@ -12,3 +12,13 @@ tj:
     base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
     model: ${DEEPSEEK_MODEL:deepseek-v4-flash}
     data-dir: ${TJ_AI_DATA_DIR:/data/ai}
+    embedding-model: ${TJ_AI_EMBEDDING_MODEL:}
+    embedding-base-url: ${TJ_AI_EMBEDDING_BASE_URL:}
+    embedding-dimension: ${TJ_AI_EMBEDDING_DIMENSION:1536}
+    vector-store-enabled: ${TJ_AI_VECTOR_STORE_ENABLED:true}
+    pg-host: ${TJ_PG_HOST:localhost}
+    pg-port: ${TJ_PG_PORT:5433}
+    pg-database: ${TJ_PG_DATABASE:tianji}
+    pg-user: ${TJ_PG_USER:tianji}
+    pg-password: ${TJ_PG_PASSWORD:tianji123}
+    pg-table: ${TJ_PG_TABLE:knowledge_chunks}

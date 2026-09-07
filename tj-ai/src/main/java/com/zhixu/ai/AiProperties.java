@@ -25,4 +25,15 @@ public class AiProperties {
     private int topK = 5;
     /** 关键词兜底召回条数。 */
     private int keywordFallbackK = 3;
+    /** Embedding 向量维度（需与模型输出一致，如 text-embedding-3-small=1536）。 */
+    private int embeddingDimension = 1536;
+    /** 是否启用 pgvector 持久化向量库；false 时退回本地 chunks.json。 */
+    private boolean vectorStoreEnabled = true;
+    /** pgvector 连接串各部分。 */
+    private String pgHost = "localhost";
+    private int pgPort = 5433;
+    private String pgDatabase = "tianji";
+    private String pgUser = "tianji";
+    private String pgPassword = "tianji123";
+    private String pgTable = "knowledge_chunks";
 }

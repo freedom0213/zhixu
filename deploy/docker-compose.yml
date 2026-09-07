@@ -140,6 +140,24 @@ services:
       timeout: 5s
       retries: 10
 
+  pgvector:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${TJ_PG_DATABASE:-tianji}
+      POSTGRES_USER: ${TJ_PG_USER:-tianji}
+      POSTGRES_PASSWORD: ${TJ_PG_PASSWORD:-tianji123}
+      TZ: Asia/Shanghai
+    ports:
+      - "${TJ_PG_PORT:-5433}:5432"
+    volumes:
+      - pgvector-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${TJ_PG_USER:-tianji} -d ${TJ_PG_DATABASE:-tianji}"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
 volumes:
   mysql-data:
   redis-data:
@@ -147,3 +165,4 @@ volumes:
   elasticsearch-data:
   nacos-data:
   nacos-logs:
+  pgvector-data:

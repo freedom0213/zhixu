@@ -83,24 +83,38 @@ docker exec tianji-local-mysql-1 sh -c "mysql -uroot -p1234 --default-character-
 
 ## AI 配置
 
-AI 服务读取以下环境变量，未配置 `DEEPSEEK_API_KEY` 时仍可使用本地检索回退回答：
+AI 服务读取以下环境变量。当 `DEEPSEEK_API_KEY` 缺省或 `TJ_AI_EMBEDDING_MODEL` 留空时，AI 仅退化为本地关键词检索 + 模板回答；填上后会自动启用 embedding 检索与向量库持久化。
 
 ```text
+# 聊天模型（DeepSeek 兼容 OpenAI 协议）
 DEEPSEEK_API_KEY=your-key
 DEEPSEEK_MODEL=deepseek-v4-flash
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 TJ_AI_DATA_DIR=/data/ai
+
+# Embedding（启用后才会真正写入向量库）
+TJ_AI_EMBEDDING_MODEL=text-embedding-3-small   # 留空则关闭 embedding
+TJ_AI_EMBEDDING_BASE_URL=                       # 默认与 chat 同 endpoint
+TJ_AI_EMBEDDING_DIMENSION=1536                  # 与模型输出一致即可
+
+# pgvector 持久化（容器内已编排 pgvector 服务）
+TJ_AI_VECTOR_STORE_ENABLED=true
+TJ_PG_HOST=pgvector        # 容器内用服务名；宿主机直连改 localhost
+TJ_PG_PORT=5432            # 容器内端口；宿主机映射默认 5433
+TJ_PG_DATABASE=tianji
+TJ_PG_USER=tianji
+TJ_PG_PASSWORD=tianji123
 ```
 
-知识库文件保存于仓库挂载目录 `data/ai/documents/`，不会上传到云存储。
+知识库文件保存于仓库挂载目录 `data/ai/documents/`，不会上传到云存储；向量块同步落盘到 `pgvector` 容器对应的 `knowledge_chunks` 表（首次启动由 LangChain4j 自动建表）。若不填 embedding 模型，向量库容器仍会启动但不会写入任何向量，检索回退为本地 `chunks.json` 的关键词召回。
 
 ## 已知限制与后续计划
 
 - 仅支持本地部署，没有公网在线 Demo；GitHub 访问者不能直接访问开发机的 `localhost`。
-- AI 当前为普通请求，不提供流式输出；检索为本地文本检索，尚未接入生产级向量数据库、重排和多租户权限。
+- AI 已支持结构化分块 + Embedding 检索 + pgvector 持久化（默认 `pgvector/pgvector:pg16` 容器，端口 5433），但仍未提供流式输出、生产级向量数据库隔离、重排或细粒度权限。
 - 微信/支付宝支付、真实短信、云媒资、对象存储等第三方服务只保留配置占位，不作为本地验收依赖。
 - 消息/WebSocket、考试题库和部分非核心互动功能提供空状态或后续扩展入口。
-- 下一步：录制真实页面截图/GIF，补充未完成业务模块，再评估公网服务器上的在线 Demo；最后再迭代 AI 流式输出、向量检索和文档权限管理。
+- 下一步：在 README 接入 AI 文档截图与 pgvector 表内数据的可视证据；评估公网服务器上的在线 Demo；最后再迭代 AI 流式输出、向量检索增强和文档权限管理。
 
 ## 目录结构
 

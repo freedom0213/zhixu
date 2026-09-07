@@ -179,6 +179,9 @@ services:
 
   ai-service:
     <<: *java-service
+    depends_on:
+      pgvector:
+        condition: service_healthy
     environment:
       SPRING_PROFILES_ACTIVE: local
       NACOS_SERVER_ADDR: nacos:8848
@@ -190,6 +193,15 @@ services:
       DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-v4-flash}
       DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
       TJ_AI_DATA_DIR: /data/ai
+      TJ_AI_EMBEDDING_MODEL: ${TJ_AI_EMBEDDING_MODEL:-}
+      TJ_AI_EMBEDDING_BASE_URL: ${TJ_AI_EMBEDDING_BASE_URL:-}
+      TJ_AI_EMBEDDING_DIMENSION: ${TJ_AI_EMBEDDING_DIMENSION:-1536}
+      TJ_AI_VECTOR_STORE_ENABLED: ${TJ_AI_VECTOR_STORE_ENABLED:-true}
+      TJ_PG_HOST: pgvector
+      TJ_PG_PORT: 5432
+      TJ_PG_DATABASE: ${TJ_PG_DATABASE:-tianji}
+      TJ_PG_USER: ${TJ_PG_USER:-tianji}
+      TJ_PG_PASSWORD: ${TJ_PG_PASSWORD:-tianji123}
     build:
       context: ..
       dockerfile: deploy/service.Dockerfile
