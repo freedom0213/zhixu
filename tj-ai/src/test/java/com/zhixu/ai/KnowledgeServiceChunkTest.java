@@ -36,18 +36,21 @@ class KnowledgeServiceChunkTest {
                 "HashMap 是 Map 接口的哈希实现，JDK8 后底层是数组 + 链表 + 红黑树。\n";
         MockMultipartFile file = new MockMultipartFile(
                 "file", "java集合.md", "text/markdown", md.getBytes());
-        Map<String, Object> res = svc.upload(file);
+        Map<String, Object> res = svc.upload(42L, file);
         assertEquals("java集合.md", res.get("name"));
         int cnt = (Integer) res.get("chunkCount");
         assertTrue(cnt >= 3, "应切出多个 chunk，实得 " + cnt);
 
         // 关键词检索（无 embedding 时走倒排）
-        List<Map<String, Object>> ctx = svc.list();
+        List<Map<String, Object>> ctx = svc.list(42L);
         assertEquals(1, ctx.size());
         assertTrue(((Integer) ctx.get(0).get("chunkCount")) >= 3);
 
+        // 未登录（userId=null）时列表应为空（用户隔离）
+        assertTrue(svc.list(null).isEmpty());
+
         // 提问 + 不调模型也能返回兜底
-        String ans = svc.chat(null, "ArrayList 扩容机制");
+        String ans = svc.chat(null, 42L, "ArrayList 扩容机制");
         assertNotNull(ans);
         assertTrue(ans.contains("ArrayList"), "兜底答案应包含检索片段: " + ans);
     }
