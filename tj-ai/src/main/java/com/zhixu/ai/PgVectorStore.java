@@ -76,6 +76,7 @@ public class PgVectorStore {
             Metadata md = new Metadata();
             md.put("chunkId", c.getChunkId());
             md.put("docId", c.getDocId());
+            md.put("userId", c.getUserId() == null ? "" : String.valueOf(c.getUserId()));
             md.put("docName", c.getDocName() == null ? "" : c.getDocName());
             segments.add(TextSegment.from(c.getText(), md));
             embeddings.add(new Embedding(c.getEmbedding()));

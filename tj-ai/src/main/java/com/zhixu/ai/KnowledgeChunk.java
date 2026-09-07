@@ -18,6 +18,8 @@ public class KnowledgeChunk {
     private String chunkId;
     /** 来源文档 ID（upload 时生成的 safe 文件名）。 */
     private String docId;
+    /** 归属用户 ID（网关注入的 user-info）；历史数据为 null。 */
+    private Long userId;
     /** 来源文档原始显示名。 */
     private String docName;
     /** 标题面包屑：["Java 基础", "集合框架"]。 */

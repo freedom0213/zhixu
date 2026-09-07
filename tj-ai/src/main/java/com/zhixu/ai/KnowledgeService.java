@@ -20,11 +20,15 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 public class KnowledgeService {
     private final AiProperties properties;
     private final Map<String, String> documents = new ConcurrentHashMap<>();
+    /** docId -> 归属用户 ID（由 documents/{userId}/ 目录结构持久化）。 */
+    private final Map<String, Long> docOwner = new ConcurrentHashMap<>();
     private final Map<String, Map<String, Object>> sessions = new ConcurrentHashMap<>();
     private final AtomicLong recordSequence = new AtomicLong();
     private final ChatLanguageModel model;
@@ -40,10 +44,17 @@ public class KnowledgeService {
         Path indexPath = Paths.get(properties.getDataDir(), "index", "chunks.json");
         try {
             Files.createDirectories(dir);
-            try (var paths = Files.list(dir)) {
-                paths.filter(Files::isRegularFile).forEach(p -> {
-                    try { documents.put(p.getFileName().toString(), Files.readString(p)); } catch (IOException ignored) { }
+            // 目录结构：documents/{userId}/{文件名}；历史单层目录视为 userId=null
+            try (var userDirs = Files.list(dir)) {
+                userDirs.filter(Files::isDirectory).forEach(ud -> {
+                    Long uid = parseLongOrNull(ud.getFileName().toString());
+                    try (var paths = Files.list(ud)) {
+                        paths.filter(Files::isRegularFile).forEach(p -> loadDocument(p, uid));
+                    } catch (IOException ignored) { }
                 });
+                try (var paths = Files.list(dir)) {
+                    paths.filter(Files::isRegularFile).forEach(p -> loadDocument(p, null));
+                }
             }
         } catch (IOException ignored) { }
         this.chunkIndex = new ChunkIndex(indexPath);
@@ -75,19 +86,39 @@ public class KnowledgeService {
                 : null;
     }
 
-    public Map<String, Object> upload(MultipartFile file) throws IOException {
+    private void loadDocument(Path p, Long userId) {
+        try {
+            String name = p.getFileName().toString();
+            documents.put(name, Files.readString(p));
+            // ConcurrentHashMap 不允许 null value，历史无主文件用 -1L 哨兵
+            docOwner.put(name, userId == null ? -1L : userId);
+        } catch (IOException ignored) { }
+    }
+
+    private static Long parseLongOrNull(String s) {
+        try { return Long.parseLong(s); } catch (NumberFormatException e) { return null; }
+    }
+
+    public Map<String, Object> upload(Long userId, MultipartFile file) throws IOException {
         String name = Optional.ofNullable(file.getOriginalFilename()).orElse("document.txt");
         if (!(name.toLowerCase(Locale.ROOT).endsWith(".md") || name.toLowerCase(Locale.ROOT).endsWith(".markdown") || name.toLowerCase(Locale.ROOT).endsWith(".txt")))
             throw new IllegalArgumentException("仅支持 Markdown 或 TXT 文件");
         String safe = UUID.randomUUID() + "-" + Paths.get(name).getFileName();
-        Path path = Paths.get(properties.getDataDir(), "documents", safe);
+        // 未登录禁止上传知识库文件
+        if (userId == null) throw new IllegalArgumentException("请先登录后再上传知识库文件");
+        // 同一用户下同名文件只能存在一份
+        if (list(userId).stream().anyMatch(d -> name.equals(d.get("name")))) {
+            throw new IllegalArgumentException("知识库中已存在同名文件「" + name + "」，请先删除旧文件或重命名后再上传");
+        }
+        Path path = Paths.get(properties.getDataDir(), "documents", String.valueOf(userId), safe);
         Files.createDirectories(path.getParent());
         String text = new String(file.getBytes(), StandardCharsets.UTF_8);
         Files.writeString(path, text);
         documents.put(safe, text);
+        docOwner.put(safe, userId);
 
         // 结构化切块 + embedding
-        List<KnowledgeChunk> chunks = buildChunks(safe, name, text);
+        List<KnowledgeChunk> chunks = buildChunks(safe, name, text, userId);
         if (embeddingEnabled) embedChunks(chunks);
         chunkIndex.addAll(safe, name, chunks);
         if (vectorStore != null) vectorStore.addAll(chunks);
@@ -95,11 +126,17 @@ public class KnowledgeService {
         return Map.of("id", safe, "name", name, "size", text.length(), "chunkCount", chunks.size());
     }
 
-    public int chunkTotal() { return chunkIndex.size(); }
+    public int chunkTotal(Long userId) { return (int) chunkIndex.all().stream().filter(c -> owns(c, userId)).count(); }
 
-    public List<Map<String, Object>> list() {
+    private static boolean owns(KnowledgeChunk c, Long userId) {
+        return userId != null && Objects.equals(c.getUserId(), userId);
+    }
+
+    public List<Map<String, Object>> list(Long userId) {
         List<Map<String, Object>> result = new ArrayList<>();
+        if (userId == null) return result;
         documents.forEach((name, text) -> {
+            if (!Objects.equals(docOwner.get(name), userId)) return;
             int separator = name.length() > 37 && name.charAt(36) == '-' ? 36 : name.indexOf('-');
             String displayName = separator >= 0 && separator + 1 < name.length() ? name.substring(separator + 1) : name;
             int chunkCount = (int) chunkIndex.all().stream().filter(c -> name.equals(c.getDocId())).count();
@@ -108,61 +145,83 @@ public class KnowledgeService {
         return result;
     }
 
-    public String content(String id) throws IOException {
+    public String content(Long userId, String id) throws IOException {
+        if (userId == null || !Objects.equals(docOwner.get(id), userId)) throw new NoSuchFileException(id);
         String value = documents.get(id);
         if (value == null) throw new NoSuchFileException(id);
         return value;
     }
 
-    public void delete(String id) throws IOException {
+    public void delete(Long userId, String id) throws IOException {
+        if (userId == null || !Objects.equals(docOwner.get(id), userId)) throw new NoSuchFileException(id);
         documents.remove(id);
-        Files.deleteIfExists(Paths.get(properties.getDataDir(), "documents", id));
+        docOwner.remove(id);
+        Files.deleteIfExists(Paths.get(properties.getDataDir(), "documents", String.valueOf(userId), id));
         chunkIndex.removeByDoc(id);
         if (vectorStore != null) vectorStore.removeByDoc(id);
     }
 
-    public List<Map<String, Object>> sessions() { return new ArrayList<>(sessions.values()); }
+    /** 校验会话归属：不存在或非本人会话返回 null。 */
+    private Map<String, Object> ownSession(Long userId, String id) {
+        if (userId == null || id == null || id.isBlank()) return null;
+        Map<String, Object> session = sessions.get(id);
+        if (session == null) return null;
+        return Objects.equals(session.get("userId"), userId) ? session : null;
+    }
 
-    public Map<String, Object> createSession(String name, String tag) {
+    public List<Map<String, Object>> sessions(Long userId) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        if (userId == null) return result;
+        sessions.values().forEach(s -> {
+            if (Objects.equals(s.get("userId"), userId)) result.add(s);
+        });
+        return result;
+    }
+
+    public Map<String, Object> createSession(Long userId, String name, String tag) {
+        if (userId == null) throw new IllegalArgumentException("请先登录后再创建会话");
         Map<String, Object> session = new LinkedHashMap<>();
         String id = UUID.randomUUID().toString();
         session.put("id", id); session.put("sessionId", id);
+        session.put("userId", userId);
         session.put("name", name); session.put("tag", tag); sessions.put(id, session);
         return session;
     }
 
-    public void deleteSession(String id) { sessions.remove(id); }
+    public void deleteSession(Long userId, String id) {
+        if (ownSession(userId, id) == null) return;
+        sessions.remove(id);
+    }
 
-    public List<Map<String, Object>> records(String id) {
-        if (id == null || id.isBlank()) return Collections.emptyList();
-        Map<String, Object> session = sessions.get(id);
+    public List<Map<String, Object>> records(Long userId, String id) {
+        Map<String, Object> session = ownSession(userId, id);
         if (session == null) return Collections.emptyList();
         @SuppressWarnings("unchecked") List<Map<String, Object>> records = (List<Map<String, Object>>) session.get("records");
         if (records == null) return Collections.emptyList();
         synchronized (records) { return new ArrayList<>(records); }
     }
 
-    public Map<String, Object> updateSession(String id, String name, String tag) {
-        Map<String, Object> session = sessions.get(id);
+    public Map<String, Object> updateSession(Long userId, String id, String name, String tag) {
+        Map<String, Object> session = ownSession(userId, id);
         if (session != null) { session.put("name", name); session.put("tag", tag); }
         return session;
     }
 
-    public String chat(String question) { return chat(null, question); }
+    public String chat(Long userId, String question) { return chat(null, userId, question); }
 
-    public String chat(String sessionId, String question) {
+    public String chat(String sessionId, Long userId, String question) {
         String query = question == null ? "" : question.trim();
-        List<KnowledgeChunk> ctx = retrieve(query);
+        List<KnowledgeChunk> ctx = retrieve(userId, query);
         String answer = answerWithContext(ctx, query);
-        appendRecords(sessionId, query, answer);
+        appendRecords(userId, sessionId, query, answer);
         return answer;
     }
 
     /** Streams provider tokens while retaining the local fallback for offline demos. */
-    public void streamChat(String sessionId, String question, Consumer<String> onToken,
+    public void streamChat(String sessionId, Long userId, String question, Consumer<String> onToken,
                            Consumer<String> onComplete, Consumer<Throwable> onError) {
         String query = question == null ? "" : question.trim();
-        List<KnowledgeChunk> ctx = retrieve(query);
+        List<KnowledgeChunk> ctx = retrieve(userId, query);
         if (streamingModel == null) {
             String answer = localAnswer(ctx);
             CompletableFuture.runAsync(() -> {
@@ -171,7 +230,7 @@ public class KnowledgeService {
                         onToken.accept(answer.substring(start, Math.min(start + 12, answer.length())));
                         Thread.sleep(18L);
                     }
-                    appendRecords(sessionId, query, answer);
+                    appendRecords(userId, sessionId, query, answer);
                     onComplete.accept(answer);
                 } catch (Throwable error) {
                     onError.accept(error);
@@ -190,7 +249,7 @@ public class KnowledgeService {
 
                 @Override public void onComplete(dev.langchain4j.model.output.Response<AiMessage> response) {
                     String complete = answer.toString();
-                    appendRecords(sessionId, query, complete);
+                    appendRecords(userId, sessionId, query, complete);
                     onComplete.accept(complete);
                 }
 
@@ -201,28 +260,31 @@ public class KnowledgeService {
         }
     }
 
-    /** 检索：embedding 启用时走向量 topK，未启用或失败时走关键词兜底。 */
-    private List<KnowledgeChunk> retrieve(String query) {
+    /** 检索：embedding 启用时走向量 topK，未启用或失败时走关键词兜底。仅检索当前用户自己的 chunk。 */
+    private List<KnowledgeChunk> retrieve(Long userId, String query) {
+        if (userId == null) return Collections.emptyList();
         if (query.isEmpty() || chunkIndex.isEmpty()) return Collections.emptyList();
+        List<KnowledgeChunk> mine = new ArrayList<>();
+        for (KnowledgeChunk c : chunkIndex.all()) if (owns(c, userId)) mine.add(c);
+        if (mine.isEmpty()) return Collections.emptyList();
         if (embeddingEnabled) {
             try {
                 float[] q = embed(query);
                 List<KnowledgeChunk> out = new ArrayList<>();
-                // pgvector 可用时由向量库做 ANN 检索
+                // pgvector 可用时由向量库做 ANN 检索（向量召回后再按 userId 过滤）
                 if (vectorStore != null && vectorStore.isAvailable()) {
                     Map<String, KnowledgeChunk> byId = new HashMap<>();
-                    for (KnowledgeChunk c : chunkIndex.all()) byId.put(c.getChunkId(), c);
+                    for (KnowledgeChunk c : mine) byId.put(c.getChunkId(), c);
                     for (PgVectorStore.ScoredId s : vectorStore.search(q, properties.getTopK())) {
                         KnowledgeChunk c = byId.get(s.chunkId);
                         if (c != null) out.add(c);
                     }
                 } else {
                     // 本地 cosine 内存检索（pgvector 不可用时的降级）
-                    List<KnowledgeChunk> all = chunkIndex.all();
-                    int k = Math.min(properties.getTopK(), all.size());
+                    int k = Math.min(properties.getTopK(), mine.size());
                     if (k <= 0) return Collections.emptyList();
                     PriorityQueue<Scored> heap = new PriorityQueue<>(Comparator.comparingDouble(Scored::score));
-                    for (KnowledgeChunk c : all) {
+                    for (KnowledgeChunk c : mine) {
                         if (c.getEmbedding() == null) continue;
                         double sc = cosine(q, c.getEmbedding());
                         if (heap.size() < k) heap.offer(new Scored(c, sc));
@@ -231,18 +293,37 @@ public class KnowledgeService {
                     while (!heap.isEmpty()) out.add(heap.poll().chunk);
                     Collections.reverse(out);
                 }
-                // 关键词兜底追加（去重）
+                // 关键词兜底追加（去重，仅本用户）
                 Set<String> seen = new HashSet<>();
                 for (KnowledgeChunk c : out) seen.add(c.getChunkId());
-                for (KnowledgeChunk c : chunkIndex.keywordSearch(query, properties.getKeywordFallbackK())) {
-                    if (seen.add(c.getChunkId())) out.add(c);
+                for (KnowledgeChunk c : mine) {
+                    if (keywordHit(c, query) && seen.add(c.getChunkId())) out.add(c);
                 }
                 return out;
             } catch (Throwable ignored) {
                 // embedding 失败 → 关键词兜底
             }
         }
-        return chunkIndex.keywordSearch(query, properties.getTopK() + properties.getKeywordFallbackK());
+        List<KnowledgeChunk> out = new ArrayList<>();
+        for (KnowledgeChunk c : mine) {
+            if (keywordHit(c, query)) out.add(c);
+            if (out.size() >= properties.getTopK() + properties.getKeywordFallbackK()) break;
+        }
+        return out;
+    }
+
+    /** 与 ChunkIndex.keywordSearch 相同的关键词命中逻辑，但仅作用于给定 chunk。 */
+    private boolean keywordHit(KnowledgeChunk c, String query) {
+        if (c == null || c.getKeywords() == null || query == null || query.isEmpty()) return false;
+        String lower = query.toLowerCase(Locale.ROOT);
+        List<String> kws = c.getKeywords();
+        for (int i = 0; i + 1 < lower.length(); i++) {
+            char a = lower.charAt(i), b = lower.charAt(i + 1);
+            if (a > 127 && b > 127 && kws.contains(lower.substring(i, i + 2))) return true;
+        }
+        Matcher tokenM = Pattern.compile("[a-z0-9]{2,}").matcher(lower);
+        while (tokenM.find()) if (kws.contains(tokenM.group())) return true;
+        return false;
     }
 
     private float[] embed(String text) {
@@ -263,7 +344,7 @@ public class KnowledgeService {
         }
     }
 
-    private List<KnowledgeChunk> buildChunks(String docId, String docName, String text) {
+    private List<KnowledgeChunk> buildChunks(String docId, String docName, String text, Long userId) {
         List<MarkdownChunker.RawChunk> raws = MarkdownChunker.chunk(
                 text, docName, properties.getChunkSize(), properties.getChunkOverlap());
         List<KnowledgeChunk> out = new ArrayList<>(raws.size());
@@ -272,7 +353,7 @@ public class KnowledgeService {
             List<String> kws = MarkdownChunker.keywords(chunkText);
             out.add(new KnowledgeChunk(
                     UUID.randomUUID().toString(),
-                    docId, docName,
+                    docId, userId, docName,
                     r.sectionPath,
                     r.heading,
                     0, chunkText.length(),
@@ -327,9 +408,8 @@ public class KnowledgeService {
         return sb.toString();
     }
 
-    private void appendRecords(String sessionId, String question, String answer) {
-        if (sessionId == null) return;
-        Map<String, Object> session = sessions.get(sessionId);
+    private void appendRecords(Long userId, String sessionId, String question, String answer) {
+        Map<String, Object> session = ownSession(userId, sessionId);
         if (session == null) return;
         @SuppressWarnings("unchecked") List<Map<String, Object>> records = (List<Map<String, Object>>) session.computeIfAbsent("records", k -> Collections.synchronizedList(new ArrayList<>()));
         synchronized (records) {
