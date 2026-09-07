@@ -20,3 +20,15 @@ data/ai
 *.local.override.yml
 *.local.override.yaml
 screenshots/raw
+
+.archive/
+
+# Local-only scratch directories created during dev iteration.
+tj-ai/%TEMP%/
+rebuild.ps1
+learning2.txt
+learnling.txt
+
+# Editor / tooling scratch.
+.reasonix/
+.vscode/

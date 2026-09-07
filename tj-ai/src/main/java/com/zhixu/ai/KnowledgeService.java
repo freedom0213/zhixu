@@ -31,6 +31,7 @@ public class KnowledgeService {
     private final StreamingChatLanguageModel streamingModel;
     private final EmbeddingModel embeddingModel;
     private final ChunkIndex chunkIndex;
+    private final PgVectorStore vectorStore;
     private final boolean embeddingEnabled;
 
     public KnowledgeService(AiProperties properties) {
@@ -66,6 +67,9 @@ public class KnowledgeService {
                     .modelName(properties.getEmbeddingModel())
                     .build()
                 : null;
+        this.vectorStore = properties.isVectorStoreEnabled() && this.embeddingEnabled
+                ? new PgVectorStore(properties)
+                : null;
     }
 
     public Map<String, Object> upload(MultipartFile file) throws IOException {
@@ -83,6 +87,7 @@ public class KnowledgeService {
         List<KnowledgeChunk> chunks = buildChunks(safe, name, text);
         if (embeddingEnabled) embedChunks(chunks);
         chunkIndex.addAll(safe, name, chunks);
+        if (vectorStore != null) vectorStore.addAll(chunks);
 
         return Map.of("id", safe, "name", name, "size", text.length(), "chunkCount", chunks.size());
     }
@@ -110,6 +115,7 @@ public class KnowledgeService {
         documents.remove(id);
         Files.deleteIfExists(Paths.get(properties.getDataDir(), "documents", id));
         chunkIndex.removeByDoc(id);
+        if (vectorStore != null) vectorStore.removeByDoc(id);
     }
 
     public List<Map<String, Object>> sessions() { return new ArrayList<>(sessions.values()); }
@@ -198,19 +204,30 @@ public class KnowledgeService {
         if (embeddingEnabled) {
             try {
                 float[] q = embed(query);
-                List<KnowledgeChunk> all = chunkIndex.all();
-                int k = Math.min(properties.getTopK(), all.size());
-                if (k <= 0) return Collections.emptyList();
-                PriorityQueue<Scored> heap = new PriorityQueue<>(Comparator.comparingDouble(Scored::score));
-                for (KnowledgeChunk c : all) {
-                    if (c.getEmbedding() == null) continue;
-                    double s = cosine(q, c.getEmbedding());
-                    if (heap.size() < k) heap.offer(new Scored(c, s));
-                    else if (s > heap.peek().score) { heap.poll(); heap.offer(new Scored(c, s)); }
-                }
                 List<KnowledgeChunk> out = new ArrayList<>();
-                while (!heap.isEmpty()) out.add(heap.poll().chunk);
-                Collections.reverse(out);
+                // pgvector 可用时由向量库做 ANN 检索
+                if (vectorStore != null && vectorStore.isAvailable()) {
+                    Map<String, KnowledgeChunk> byId = new HashMap<>();
+                    for (KnowledgeChunk c : chunkIndex.all()) byId.put(c.getChunkId(), c);
+                    for (PgVectorStore.ScoredId s : vectorStore.search(q, properties.getTopK())) {
+                        KnowledgeChunk c = byId.get(s.chunkId);
+                        if (c != null) out.add(c);
+                    }
+                } else {
+                    // 本地 cosine 内存检索（pgvector 不可用时的降级）
+                    List<KnowledgeChunk> all = chunkIndex.all();
+                    int k = Math.min(properties.getTopK(), all.size());
+                    if (k <= 0) return Collections.emptyList();
+                    PriorityQueue<Scored> heap = new PriorityQueue<>(Comparator.comparingDouble(Scored::score));
+                    for (KnowledgeChunk c : all) {
+                        if (c.getEmbedding() == null) continue;
+                        double sc = cosine(q, c.getEmbedding());
+                        if (heap.size() < k) heap.offer(new Scored(c, sc));
+                        else if (sc > heap.peek().score) { heap.poll(); heap.offer(new Scored(c, sc)); }
+                    }
+                    while (!heap.isEmpty()) out.add(heap.poll().chunk);
+                    Collections.reverse(out);
+                }
                 // 关键词兜底追加（去重）
                 Set<String> seen = new HashSet<>();
                 for (KnowledgeChunk c : out) seen.add(c.getChunkId());
