@@ -12,16 +12,17 @@
 - 首页分类、课程检索、自动补全、搜索历史、课程详情和课程目录
 - 免费课程报名、收费课程加入购物车、创建待支付订单
 - 笔记、课程评价、收藏、优惠券、积分签到、积分榜和个人中心
-- LangChain4j + DeepSeek 的课程文档问答：支持 Markdown/TXT 上传、本地文件持久化、文本检索、普通请求问答、会话创建与历史恢复
-- 本地 MySQL、Redis、RabbitMQ、Nacos、Elasticsearch 及 Java 服务的 Compose 编排
+- LangChain4j + DeepSeek 的课程文档问答（RAG）：Markdown/TXT 上传、结构化分块、BGE-M3 向量化、pgvector 持久化、BGE-reranker 重排、流式输出（SSE）、会话创建与历史恢复
+- 知识库多用户隔离：文件、向量 chunk、会话与聊天记录均按用户 ID 隔离，未登录不可见、不可传、不可删；同一用户同名文件判重
+- 本地 MySQL、Redis、RabbitMQ、Nacos、Elasticsearch、pgvector 及 Java 服务的 Compose 编排
 
 ### AI 功能是否足够展示
 
-足够作为当前简历项目的 AI 功能亮点：已经形成“上传课程资料 → 建立本地知识上下文 → 提问 → 返回基于资料的答案 → 恢复会话”的完整闭环，能直观展示 RAG 应用的核心流程。当前实现定位是本地演示版，使用文本检索和普通请求，不等同于生产级向量数据库、权限隔离、流式输出或高并发服务。
+已经形成完整的 RAG 工程链路：**上传资料 → 结构化分块 → Embedding 向量化 → pgvector 持久化 → 向量召回（粗排 topK）→ BGE 重排（精排 topN）→ DeepSeek 生成 → SSE 流式输出**，并叠加多用户数据隔离、失败降级（向量库不可用时回退关键词检索，rerank 失败时回退原排序）等工程化设计。定位为本地演示版：单实例部署、无分布式向量库与鉴权审计，这些是生产化差异而非功能缺失。
 
 ## 技术栈
 
-Java 11 · Spring Boot 2.7 · Spring Cloud 2021 · Spring Cloud Alibaba · MyBatis-Plus · Vue 3 · Vite · MySQL 8 · Redis · RabbitMQ · Nacos · Elasticsearch · LangChain4j · DeepSeek · Docker Compose
+Java 11 · Spring Boot 2.7 · Spring Cloud 2021 · Spring Cloud Alibaba · MyBatis-Plus · Vue 3 · Vite · MySQL 8 · Redis · RabbitMQ · Nacos · Elasticsearch · pgvector · LangChain4j · DeepSeek · SiliconFlow（BGE-M3 / BGE-reranker）· Docker Compose
 
 ## 本地启动
 
@@ -83,19 +84,20 @@ docker exec tianji-local-mysql-1 sh -c "mysql -uroot -p1234 --default-character-
 
 ## AI 配置
 
-AI 服务读取以下环境变量。当 `DEEPSEEK_API_KEY` 缺省或 `TJ_AI_EMBEDDING_MODEL` 留空时，AI 仅退化为本地关键词检索 + 模板回答；填上后会自动启用 embedding 检索与向量库持久化。
+AI 服务读取以下环境变量。当 `DEEPSEEK_API_KEY` 缺省时聊天模型不可用；`TJ_AI_EMBEDDING_MODEL` 留空时关闭向量检索，退化为本地关键词召回（`chunks.json`）；`TJ_AI_RERANK_MODEL` 留空时关闭重排，向量召回结果直接送 LLM。填齐后自动启用完整 RAG 链路：Embedding 向量化 → pgvector 持久化 → 向量召回 → 重排 → LLM 生成。
 
 ```text
-# 聊天模型（DeepSeek 兼容 OpenAI 协议）
+# 聊天模型（DeepSeek，兼容 OpenAI 协议）
 DEEPSEEK_API_KEY=your-key
 DEEPSEEK_MODEL=deepseek-v4-flash
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 TJ_AI_DATA_DIR=/data/ai
 
-# Embedding（启用后才会真正写入向量库）
-TJ_AI_EMBEDDING_MODEL=text-embedding-3-small   # 留空则关闭 embedding
-TJ_AI_EMBEDDING_BASE_URL=                       # 默认与 chat 同 endpoint
-TJ_AI_EMBEDDING_DIMENSION=1536                  # 与模型输出一致即可
+# Embedding（示例：硅基流动 BGE-M3，1024 维；留空则关闭向量检索）
+TJ_AI_EMBEDDING_MODEL=BAAI/bge-m3              # 留空则关闭 embedding
+TJ_AI_EMBEDDING_BASE_URL=https://api.siliconflow.cn   # 默认与 chat 同 endpoint
+TJ_AI_EMBEDDING_API_KEY=sk-xxx                 # 独立 key；留空复用 DEEPSEEK_API_KEY
+TJ_AI_EMBEDDING_DIMENSION=1024                 # 与模型输出一致即可
 
 # pgvector 持久化（容器内已编排 pgvector 服务）
 TJ_AI_VECTOR_STORE_ENABLED=true
@@ -104,9 +106,16 @@ TJ_PG_PORT=5432            # 容器内端口；宿主机映射默认 5433
 TJ_PG_DATABASE=tianji
 TJ_PG_USER=tianji
 TJ_PG_PASSWORD=tianji123
+
+# Rerank 重排（可选；留空则关闭，向量召回 topK 直接喂 LLM）
+TJ_AI_RERANK_MODEL=BAAI/bge-reranker-v2-m3
+TJ_AI_RERANK_BASE_URL=https://api.siliconflow.cn
+TJ_AI_RERANK_API_KEY=sk-xxx
+TJ_AI_RERANK_CANDIDATE_K=10   # 向量召回送重排的候选条数
+TJ_AI_RERANK_TOP_N=3          # 重排后真正喂给 LLM 的 chunk 数
 ```
 
-知识库文件保存于仓库挂载目录 `data/ai/documents/`，不会上传到云存储；向量块同步落盘到 `pgvector` 容器对应的 `knowledge_chunks` 表（首次启动由 LangChain4j 自动建表）。若不填 embedding 模型，向量库容器仍会启动但不会写入任何向量，检索回退为本地 `chunks.json` 的关键词召回。
+知识库文件按用户隔离保存于仓库挂载目录 `data/ai/documents/{userId}/`，不会上传到云存储；向量块同步落盘到 `pgvector` 容器对应的 `knowledge_chunks` 表（首次启动由 LangChain4j 自动建表，metadata 记录 `userId` 供检索过滤）。若不填 embedding 模型，向量库容器仍会启动但不会写入任何向量，检索回退为本地 `chunks.json` 的关键词召回；rerank 调用失败时自动退化为原排序 topK。
 
 ### 知识库问答的设计取舍（已确认）
 
@@ -120,10 +129,10 @@ TJ_PG_PASSWORD=tianji123
 ## 已知限制与后续计划
 
 - 仅支持本地部署，没有公网在线 Demo；GitHub 访问者不能直接访问开发机的 `localhost`。
-- AI 已支持结构化分块 + Embedding 检索 + pgvector 持久化（默认 `pgvector/pgvector:pg16` 容器，端口 5433），但仍未提供流式输出、生产级向量数据库隔离、重排或细粒度权限。
+- AI 已形成完整 RAG 链路：结构化分块 + BGE-M3 Embedding + pgvector 持久化（`pgvector/pgvector:pg16` 容器，端口 5433）+ BGE-reranker 重排 + SSE 流式输出 + 多用户数据隔离（文件/向量/会话/聊天记录按 userId 隔离）与同名文件判重；多轮对话的会话数据目前存内存，重启即失效（持久化是后续方向）。
 - 微信/支付宝支付、真实短信、云媒资、对象存储等第三方服务只保留配置占位，不作为本地验收依赖。
 - 消息/WebSocket、考试题库和部分非核心互动功能提供空状态或后续扩展入口。
-- 下一步：在 README 接入 AI 文档截图与 pgvector 表内数据的可视证据；评估公网服务器上的在线 Demo；最后再迭代 AI 流式输出、向量检索增强和文档权限管理。
+- 下一步：在 README 接入 AI 文档截图与 pgvector 表内数据的可视证据；评估公网服务器上的在线 Demo；评估检索质量评估集（hit rate）与会话持久化。
 
 ## 目录结构
 
