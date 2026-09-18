@@ -54,6 +54,7 @@ import { reactive, ref, onUnmounted } from "vue";
 import { useRouter } from 'vue-router';
 import { phoneLogins, verifycode ,getUserInfo } from "@/api/user"; // 假设登录接口需要验证码
 import { useUserStore } from '@/store';
+import { redirectAfterLogin } from '@/config/loginRedirect';
 import { ElMessage } from "element-plus";
 
 const store = useUserStore();
@@ -153,8 +154,8 @@ const submitForm = (formEl) => {
           if (data.code === 200) {
               // 记录到store 并调转到首页
               store.setUserInfo(data.data)
-					    // 跳转到首页
-              router.push('/main/index')
+					    // 跳转到首页（从学员端进来则回学员端，官网入口保持原行为）
+              router.push(redirectAfterLogin(data.data))
           }
 				} else {
           ElMessage({

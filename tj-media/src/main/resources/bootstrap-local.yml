@@ -5,6 +5,21 @@ spring:
       discovery:
         namespace: ${NACOS_NAMESPACE:}
         group: DEFAULT_GROUP
+  # P23 · 视频上传放宽（Spring 默认 1MB 远远不够）
+  servlet:
+    multipart:
+      max-file-size: 2GB
+      max-request-size: 2GB
+
 logging:
   level:
     com.zhixu: debug
+
+# P23 · 本地媒资（不配云凭证）：上传走服务端 multipart，播放走本地直链
+tj:
+  file:
+    platform: LOCAL
+    local:
+      base-path: ${MEDIA_LOCAL_PATH:/data/media}
+  platform:
+    media: LOCAL

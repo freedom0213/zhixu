@@ -17,6 +17,9 @@ public class CourseAndSectionVO {
     private String coverUrl;
     @ApiModelProperty("课程章节数量")
     private Integer sections;
+
+    @ApiModelProperty("是否免费课程 1是 0否（P25：免费课不显示「试看」标签）")
+    private Integer free;
     @ApiModelProperty("教师头像")
     private String teacherIcon;
     @ApiModelProperty("教师名称")

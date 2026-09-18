@@ -14,7 +14,7 @@
             <span v-if="it.trailer" class="trailer-font">试看</span>
           </div>
           <div> 
-            <span @click="play(it, it.type == 2 ? 1 :it.type)" v-if="it.mediaDuration != 0">{{(it.mediaDuration/60).toFixed(0)}}:{{item.mediaDuration%60}}</span>
+            <span @click="play(it, it.type == 2 ? 1 :it.type)" v-if="it.mediaDuration != 0">{{ mmss(it.mediaDuration) }}</span>
           </div>
         </div>
       </el-collapse-item>
@@ -30,7 +30,7 @@ const store = dataCacheStore()
 const props = defineProps({
   data:{
     type: Array,
-    default:[]
+    default: () => []
   },
   statusList:{
     type: Array,
@@ -52,12 +52,13 @@ const currentPlayData = inject('currentPlayData')
 const playId = ref(props.playId)
 const finished = ref(props.finished)
 const actIndex = ref("")
-onMounted(async () => {
-  for (let c in props.data) {
-    c.sections.forEach(s => {
-      if(s.id == props.playId){actIndex.value = c.id}
-    })
-  }
+// 数据异步到达后自动展开当前播放小节所在章（原 for...in 实现是坏的：c 是字符串键）
+watchEffect(() => {
+  (props.data || []).forEach((c) => {
+    (c.sections || []).forEach((s) => {
+      if (s.id == props.playId) { actIndex.value = c.id; }
+    });
+  });
 })
 watchEffect(() => {
   playId.value = currentPlayData.sectionId || props.playId
@@ -79,11 +80,13 @@ const startIcon = (item) => {
   let data = 'iconfont zhy-a-ico-sp-sei2x'
 
   if(item.type == '2'){
-    if(item.finished != undefined && item.finished == false){  // 未播放完成
+    // ⚠️ P25：这里原来第三个分支写成了 `{ ... }`（裸块，漏了 else）——
+    //    裸块总会执行并覆盖前面两个分支，于是「已完成」图标**从来没显示过**。
+    if(item.finished != undefined && item.finished == false){  // 看过但没看完
       data = 'iconfont zhy-a-ico-502x1'
-    } else if(item.finished && item.finished == true){ // 播放完成
+    } else if(item.finished == true){ // 已学完
       data = 'iconfont zhy-a-ico-wc2x'
-    } {
+    } else {
       data = 'iconfont zhy-a-ico-sp-sei2x' // 未播放过
     }
   } else if(item.type == '3'){
@@ -94,6 +97,18 @@ const startIcon = (item) => {
 
 // emit数据载入
 const emit = defineEmits(['sortHandle', 'playHadle', 'openCatalogue'])
+
+/**
+ * 时长 mm:ss。
+ * 原来写的是 `(it.mediaDuration/60).toFixed(0) : item.mediaDuration%60` —— 两个毛病：
+ * 分钟被四舍五入（90s 显示成 2:30 之外的怪值）、秒数取的是**章**的时长（`item` 不是 `it`），
+ * 于是全部显示成 "15:0" 这种。
+ */
+const mmss = (sec) => {
+  const s = Number(sec) || 0
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+}
+
 const openItem = val => {
   emit('openCatalogue', val)
 }
@@ -133,8 +148,16 @@ const next = () => {
 .catalogueWrapper {
   padding: 0 10px;
 
-  ::deep(.el-collapse-item__header) {
+  // ⚠️ 章节标题必须显式指定深色：src/style/element/index.scss 里有一条
+  //    `.el-collapse-item__header{ color:#FFF }`，那是给**老的深色学习页**写的全局规则。
+  //    新学员端是浅色底 → 白字白底 = 章节名看不见，折叠状态下整个目录区看着就是"空的"
+  //    （2026-09-16 无头实测：computed color = rgb(255,255,255)）。
+  //    scoped :deep() 的权重高于那条全局规则，所以这里能盖住它。
+  :deep(.el-collapse-item__header) {
     background: transparent;
+    color: #1d1d1f;
+    font-size: 14px;
+    line-height: 22px;
   }
 
   .title {
@@ -197,10 +220,11 @@ const next = () => {
     }
 
     &:hover {
-      color: #fff;
+      // 浅色底上不能再用白字（这条也是跟着老深色页写的）
+      color: #1d1d1f;
 
       .chapter {
-        background: #ffffff !important;
+        background: #d9dde2 !important;
         color: #1B2127 !important;
       }
     }

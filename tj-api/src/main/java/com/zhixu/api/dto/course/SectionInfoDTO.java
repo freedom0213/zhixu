@@ -17,6 +17,8 @@ public class SectionInfoDTO {
     private Long mediaId;
     @ApiModelProperty("是否支持免费试看")
     private Boolean trailer;
+    @ApiModelProperty("课程是否免费（P25：免费课对所有人开放，不存在「试看」概念）")
+    private Boolean free;
     @ApiModelProperty("免费时长，不免费为0，单位分钟")
     private Integer freeDuration;
 }

@@ -23,6 +23,9 @@ public class UserDetailVO {
     private String email;
     @ApiModelProperty(value = "QQ号码")
     private String qq;
+
+    @ApiModelProperty("职业 / 头衔（P24 个人资料页需要，原先 VO 漏了）")
+    private String job;
     @ApiModelProperty(value = "个人介绍")
     private String intro;
     @ApiModelProperty(value = "省")
@@ -35,6 +38,6 @@ public class UserDetailVO {
     private Integer gender;
     @ApiModelProperty(value = "注册时间", example = "2022-07-12")
     private LocalDateTime createTime;
-    @ApiModelProperty(value = "角色名称", example = "教师")
+    @ApiModelProperty(value = "角色名称", example = "讲师")
     private String roleName;
 }

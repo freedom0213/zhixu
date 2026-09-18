@@ -1,5 +1,6 @@
 package com.zhixu.api.client.exam;
 
+import com.zhixu.api.dto.exam.PracticeUpsertDTO;
 import com.zhixu.api.dto.exam.QuestionBizDTO;
 import com.zhixu.api.dto.exam.QuestionDTO;
 import io.swagger.annotations.ApiParam;
@@ -33,4 +34,13 @@ public interface ExamClient {
     @GetMapping("/questions//scores")
     Map<Long, Integer> queryQuestionScores(
             @ApiParam("要查询的题目的id集合") @RequestParam("ids") Iterable<Long> ids);
+
+    /**
+     * 随堂练习卷幂等 upsert（p15 方案 A「配题即出卷」）—— 由 course-service 在配题保存后调用。
+     * 幂等键是 sectionId；questionIds 传空 = 该节练习停用（不硬删）。
+     *
+     * @return 练习卷 id（停用且原本没有卷时返回 null）
+     */
+    @PostMapping("/practice/upsert")
+    Long upsertPracticePaper(@RequestBody PracticeUpsertDTO dto);
 }

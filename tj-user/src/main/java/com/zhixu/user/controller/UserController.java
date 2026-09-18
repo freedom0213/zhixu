@@ -3,6 +3,7 @@ package com.zhixu.user.controller;
 import com.zhixu.api.dto.user.LoginFormDTO;
 import com.zhixu.api.dto.user.UserDTO;
 import com.zhixu.common.domain.dto.LoginUserDTO;
+import com.zhixu.common.enums.UserType;
 import com.zhixu.common.exceptions.BadRequestException;
 import com.zhixu.common.utils.BeanUtils;
 import com.zhixu.common.utils.CollUtils;
@@ -143,6 +144,84 @@ public class UserController {
             throw new BadRequestException(UserErrorInfo.Msg.USER_ID_NOT_EXISTS);
         }
         return user.getId();
+    }
+
+    /**
+     * 按账号（用户名或手机号）查一位可授课教师 —— 建课向导「添加协作讲师」用。
+     * -----------------------------------------------------------------------------
+     * 为什么是「按账号查」而不是「拉一份教师名录下拉」：
+     *   知序学堂是**面向所有有授课能力的老师**的开放平台，没有「校内教师名册」这种东西。
+     *   所以由建课老师**自己填**协作者的平台账号，我们只负责把它解析成一个真实用户 id
+     *   （course_teacher.teacher_id 必须是真的，不能存一个手输的名字）。
+     *
+     * 也顺手把「查不到」与「查到了但不是教师」分开报，避免用「不存在」掩盖真实原因。
+     */
+    @ApiOperation("按账号（用户名 / 手机号）查可授课教师")
+    @GetMapping("/lookup")
+    public UserDTO lookupTeacher(@ApiParam("用户名或手机号") @RequestParam("keyword") String keyword) {
+        String kw = keyword == null ? "" : keyword.trim();
+        if (kw.isEmpty()) {
+            throw new BadRequestException("请输入对方在平台上的账号（用户名或手机号）");
+        }
+        List<User> users = userService.lambdaQuery()
+                .and(w -> w.eq(User::getUsername, kw).or().eq(User::getCellPhone, kw))
+                .list();
+        if (CollUtils.isEmpty(users)) {
+            throw new BadRequestException("平台里没有这个账号：" + kw);
+        }
+        User user = users.get(0);
+        if (user.getType() != UserType.TEACHER) {
+            throw new BadRequestException("「" + kw + "」不是讲师身份的账号，不能加为讲师");
+        }
+        if (user.getStatus() != UserStatus.NORMAL) {
+            throw new BadRequestException("「" + kw + "」的账号已被禁用");
+        }
+        UserDetail detail = detailService.queryById(user.getId());
+        UserDTO dto = new UserDTO();
+        dto.setId(user.getId());
+        dto.setUsername(user.getUsername());
+        dto.setType(user.getType().getValue());
+        if (detail != null) {
+            // 姓名 / 岗位 / 简介为空就留空，前端显示「—」，不编造
+            dto.setName(detail.getName());
+            dto.setJob(detail.getJob());
+            dto.setIntro(detail.getIntro());
+        }
+        return dto;
+    }
+
+    /**
+     * 按账号（用户名或手机号）查**任意**用户 —— 师生对话「发起新对话」用（P22）。
+     * 与 /lookup 的区别：那个只认教师（协作讲师场景）；这里聊天对象可以是学生也可以是讲师，
+     * 只要求账号真实存在且未禁用。只回 id/用户名/名字/头像，不泄露其它资料。
+     */
+    @ApiOperation("按账号（用户名 / 手机号）查任意用户（发起会话用）")
+    @GetMapping("/chat-lookup")
+    public UserDTO chatLookup(@ApiParam("用户名或手机号") @RequestParam("keyword") String keyword) {
+        String kw = keyword == null ? "" : keyword.trim();
+        if (kw.isEmpty()) {
+            throw new BadRequestException("请输入对方在平台上的账号（用户名或手机号）");
+        }
+        List<User> users = userService.lambdaQuery()
+                .and(w -> w.eq(User::getUsername, kw).or().eq(User::getCellPhone, kw))
+                .list();
+        if (CollUtils.isEmpty(users)) {
+            throw new BadRequestException("平台里没有这个账号：" + kw);
+        }
+        User user = users.get(0);
+        if (user.getStatus() != UserStatus.NORMAL) {
+            throw new BadRequestException("「" + kw + "」的账号已被禁用");
+        }
+        UserDetail detail = detailService.queryById(user.getId());
+        UserDTO dto = new UserDTO();
+        dto.setId(user.getId());
+        dto.setUsername(user.getUsername());
+        dto.setType(user.getType().getValue());
+        if (detail != null) {
+            dto.setName(detail.getName());
+            dto.setIcon(detail.getIcon());
+        }
+        return dto;
     }
 
     @ApiOperation("检查用户手机号是否存在")

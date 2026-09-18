@@ -1,0 +1,1056 @@
+[
+  {
+    "id": 1023,
+    "name": "MySQL 高可用架构",
+    "mdFile": "MySQL高可用架构.md",
+    "intro": "解决数据库单点问题，掌握复制、故障切换、备份恢复与容量规划。",
+    "detail": "本课程从高可用的目标与指标出发，讲清主从复制原理与复制延迟的成因；随后介绍主流的高可用与集群方案，最后落到备份恢复流程与监控容量规划，形成可运维的数据库架构能力。",
+    "chapters": [
+      {
+        "name": "第一章 高可用基础与复制",
+        "summary": "本章明确高可用要达成的目标，并打牢主从复制这一基础能力。",
+        "sections": [
+          {
+            "name": "1.1 高可用的目标与指标",
+            "goal": "能正确理解 RTO、RPO 与可用性等级。",
+            "points": [
+              "RTO 指故障后恢复服务所需时间，RPO 指可容忍丢失的数据量",
+              "可用性常用几个 9 表示，99.9% 与 99.99% 对应的年停机时间相差十倍",
+              "高可用方案的选择由业务对 RTO 与 RPO 的要求决定，而不是越复杂越好",
+              "高可用不仅要防机器故障，还要防人为误操作与机房级故障"
+            ],
+            "example": [
+              "RPO = 0 通常要求同步复制或强一致共识",
+              "RTO = 30 秒通常要求自动故障切换而不是人工介入"
+            ],
+            "exampleLang": "text",
+            "pitfall": "只关注机器故障，忽略误删数据这类人为事故，而后者往往造成更长的实际停机。"
+          },
+          {
+            "name": "1.2 主从复制原理",
+            "goal": "理解 binlog、relay log 与复制线程的协作过程。",
+            "points": [
+              "主库把变更写入 binlog，dump 线程把 binlog 发送给从库",
+              "从库的 IO 线程接收并写入 relay log，SQL 线程再重放 relay log 中的事件",
+              "binlog 有三种格式：STATEMENT 记录语句、ROW 记录行变更、MIXED 混合",
+              "ROW 格式最安全但日志量更大，是当前生产环境的推荐选择"
+            ],
+            "example": [
+              "CHANGE REPLICATION SOURCE TO",
+              "  SOURCE_HOST='10.0.0.2', SOURCE_USER='repl', SOURCE_PASSWORD='***',",
+              "  SOURCE_LOG_FILE='mysql-bin.000003', SOURCE_LOG_POS=154;",
+              "START REPLICA;",
+              "SHOW REPLICA STATUS\\G"
+            ],
+            "exampleLang": "sql",
+            "pitfall": "使用 STATEMENT 格式时，含随机函数或非确定性函数的语句在主从上执行结果可能不一致。"
+          },
+          {
+            "name": "1.3 复制延迟与半同步",
+            "goal": "能定位复制延迟成因并选择复制模式。",
+            "points": [
+              "常见延迟成因：从库单线程重放、大事务、从库配置弱于主库、从库承担大量查询",
+              "通过 SHOW REPLICA STATUS 中的 Seconds_Behind_Source 观察延迟，但该值在空闲时会失真",
+              "并行复制可显著缓解单线程重放瓶颈，可按库或按组提交并行",
+              "半同步复制要求至少一个从库确认收到日志后主库才提交，降低数据丢失风险"
+            ],
+            "example": [
+              "SET GLOBAL replica_parallel_workers = 8;",
+              "SET GLOBAL replica_parallel_type = 'LOGICAL_CLOCK';"
+            ],
+            "exampleLang": "sql",
+            "pitfall": "写入超大事务会导致从库长时间落后，应把大事务拆分成小批次提交。"
+          }
+        ]
+      },
+      {
+        "name": "第二章 故障切换与集群方案",
+        "summary": "本章对比几种主流高可用方案的能力边界与适用场景。",
+        "sections": [
+          {
+            "name": "2.1 主从切换与 MHA",
+            "goal": "理解自动故障切换的流程与风险点。",
+            "points": [
+              "故障切换的核心步骤：探测主库不可用、选出数据最新的从库、提升为新主、其余从库重新指向新主",
+              "切换过程中需要处理旧主恢复后的数据回补，避免数据分叉",
+              "自动化切换工具能缩短 RTO，但必须防脑裂，即两个节点同时认为自己是主库",
+              "切换后应通知应用刷新数据源配置，可用中间件或域名切换来解耦"
+            ],
+            "example": [
+              "切换判定：连续多次心跳失败、从库延迟小于阈值、多数节点达成共识"
+            ],
+            "exampleLang": "text",
+            "pitfall": "网络分区时贸然自动切换可能造成双主写入，必须有仲裁机制防止脑裂。"
+          },
+          {
+            "name": "2.2 组复制与 InnoDB Cluster",
+            "goal": "理解基于共识协议的强一致复制方案。",
+            "points": [
+              "组复制基于 Paxos 类共识协议，多数派确认后才提交，天然避免脑裂与数据分叉",
+              "单主模式下写入集中在一个节点，多主模式可多节点写入但需处理冲突",
+              "InnoDB Cluster 在组复制之上提供 MySQL Shell 与 Router，简化部署与路由",
+              "共识方案在多数派不可用时拒绝写入，可用性换一致性，需按业务取舍"
+            ],
+            "example": [
+              "var cluster = dba.createCluster('myCluster');",
+              "cluster.addInstance('ic@node2:3306');",
+              "cluster.status();"
+            ],
+            "exampleLang": "bash",
+            "pitfall": "认为组复制可以无限扩容写入能力，实际上共识开销会随节点增多而上升。"
+          },
+          {
+            "name": "2.3 分库分表与中间件",
+            "goal": "了解单库性能瓶颈的突破方式与其代价。",
+            "points": [
+              "垂直拆分按业务把不同表分到不同库，水平拆分把同一张表按分片键拆到多个库表",
+              "分片键的选择决定了查询能否命中单库，选错会导致大量跨片查询",
+              "跨片场景的痛点：分布式事务、跨库 Join、全局唯一 ID、分页排序",
+              "常见中间件通过路由与结果归并屏蔽分片细节，但会增加运维复杂度"
+            ],
+            "example": [
+              "订单表按 user_id 取模分成 16 张表：order_0 到 order_15",
+              "全局 ID 可用雪花算法生成以避免自增主键冲突"
+            ],
+            "exampleLang": "text",
+            "pitfall": "过早分库分表，在数据量尚未到瓶颈时引入复杂度，得不偿失。"
+          }
+        ]
+      },
+      {
+        "name": "第三章 备份恢复与运维",
+        "summary": "本章保证数据可回滚、问题可发现。",
+        "sections": [
+          {
+            "name": "3.1 备份策略",
+            "goal": "能设计全量与增量结合的备份方案。",
+            "points": [
+              "逻辑备份用 mysqldump 导出 SQL，体积小但恢复慢；物理备份用 xtrabackup 直接复制数据文件，恢复快",
+              "全量备份加 binlog 增量可恢复到任意时间点，是常见组合",
+              "备份必须定期做恢复演练，未验证过的备份等于没有备份",
+              "备份文件应异地保存并加密，防范机房级故障与数据泄露"
+            ],
+            "example": [
+              "mysqldump -uroot -p --single-transaction --master-data=2 tj_course > backup.sql",
+              "xtrabackup --backup --target-dir=/data/backup/full"
+            ],
+            "exampleLang": "bash",
+            "pitfall": "mysqldump 未加 --single-transaction，会对表加锁并影响线上业务。"
+          },
+          {
+            "name": "3.2 数据恢复流程",
+            "goal": "掌握基于备份与 binlog 的时间点恢复方法。",
+            "points": [
+              "恢复流程：先还原最近一次全量备份，再用 binlog 重放至目标时间点",
+              "误删数据时应立即停止写入并备份当前状态，避免覆盖可用数据",
+              "重放 binlog 时可通过 --start-position 与 --stop-position 精确控制范围",
+              "恢复完成后要校验数据一致性与业务完整性，而不只是看命令是否成功"
+            ],
+            "example": [
+              "mysqlbinlog --start-position=154 --stop-position=892 mysql-bin.000005 | mysql -uroot -p",
+              "# 跳过误删语句的 position 区间即可实现时间点恢复"
+            ],
+            "exampleLang": "bash",
+            "pitfall": "发现误删后继续让业务写入，新数据会与待恢复的数据冲突，导致恢复更加困难。"
+          },
+          {
+            "name": "3.3 监控与容量规划",
+            "goal": "建立数据库的可观测能力与扩容判断标准。",
+            "points": [
+              "核心监控指标：QPS、TPS、连接数、活跃会话、慢查询数量、主从延迟、磁盘使用率",
+              "连接数打满与磁盘写满是最常见的两类突发故障，应设置告警阈值",
+              "容量规划关注数据增长速率与磁盘余量，预留至少一个扩容周期",
+              "定期做慢查询治理与索引review，避免性能随数据量增长而持续劣化"
+            ],
+            "example": [
+              "SHOW GLOBAL STATUS LIKE 'Threads_connected';",
+              "SELECT * FROM information_schema.PROCESSLIST WHERE COMMAND <> 'Sleep';"
+            ],
+            "exampleLang": "sql",
+            "pitfall": "只监控机器指标（CPU、内存）而忽略数据库内部指标，往往等到连接池耗尽才发现问题。"
+          }
+        ]
+      }
+    ],
+    "questions": [
+      {
+        "type": "single",
+        "stem": "RPO 指的是什么？",
+        "options": ["故障后恢复服务所需的时间", "可容忍丢失的数据量", "每秒查询数", "磁盘使用率"],
+        "answer": 1,
+        "explanation": "RPO 是恢复点目标，衡量可以容忍丢失多少数据；RTO 是恢复时间目标，衡量停机时长。",
+        "point": "高可用指标"
+      },
+      {
+        "type": "single",
+        "stem": "MySQL 主从复制中，从库负责重放 relay log 的是哪个线程？",
+        "options": ["dump 线程", "IO 线程", "SQL 线程", "purge 线程"],
+        "answer": 2,
+        "explanation": "IO 线程负责把主库 binlog 拉取并写入 relay log，SQL 线程负责重放 relay log 中的事件。",
+        "point": "复制原理"
+      },
+      {
+        "type": "single",
+        "stem": "下列哪种 binlog 格式记录的是每一行的实际变更，安全性最高？",
+        "options": ["STATEMENT", "ROW", "MIXED", "FULL"],
+        "answer": 1,
+        "explanation": "ROW 格式记录行的实际前后镜像，不依赖语句在主从上的执行结果，因此最安全，代价是日志量更大。",
+        "point": "binlog 格式"
+      },
+      {
+        "type": "single",
+        "stem": "网络分区时自动故障切换最大的风险是？",
+        "options": ["切换速度太慢", "脑裂导致双主写入", "备份文件损坏", "主从延迟升高"],
+        "answer": 1,
+        "explanation": "分区时可能出现两个节点都认为自己是主库并同时接受写入，造成数据分叉，必须有仲裁机制防范。",
+        "point": "故障切换"
+      },
+      {
+        "type": "single",
+        "stem": "使用 mysqldump 备份在线业务库时，为避免长时间锁表应添加哪个参数？",
+        "options": ["--lock-all-tables", "--single-transaction", "--flush-logs", "--skip-comments"],
+        "answer": 1,
+        "explanation": "--single-transaction 在事务隔离快照下导出数据，避免对表加锁，适合 InnoDB 在线备份。",
+        "point": "备份策略"
+      },
+      {
+        "type": "bool",
+        "stem": "备份只要成功执行就算完成，无需定期做恢复演练。",
+        "options": ["正确", "错误"],
+        "answer": 1,
+        "explanation": "错误。未经过恢复验证的备份可能因权限、版本或文件损坏而无法使用，等同于没有备份。",
+        "point": "备份验证"
+      },
+      {
+        "type": "bool",
+        "stem": "发现误删数据后应立即停止写入，并备份当前数据库状态，避免后续数据覆盖可用数据。",
+        "options": ["正确", "错误"],
+        "answer": 0,
+        "explanation": "正确。继续写入会与待恢复数据产生冲突，先止损再恢复是标准处置顺序。",
+        "point": "恢复流程"
+      },
+      {
+        "type": "bool",
+        "stem": "分库分表应在数据量尚小、性能没有问题时就提前实施，以避免将来改造困难。",
+        "options": ["正确", "错误"],
+        "answer": 1,
+        "explanation": "错误。分库分表会引入分布式事务、跨库 Join 等复杂度，应在确实遇到单库瓶颈时再做。",
+        "point": "分库分表"
+      }
+    ]
+  },
+  {
+    "id": 1033,
+    "name": "Redis 集群与高并发",
+    "mdFile": "Redis集群与高并发.md",
+    "intro": "从持久化、主从到 Cluster，系统性解决 Redis 的可靠性与扩展性问题。",
+    "detail": "本课程讲解 RDB 与 AOF 持久化及内存淘汰策略，深入主从复制与哨兵故障转移机制，最后展开 Redis Cluster 的分片、伸缩与高并发场景下的实践要点。",
+    "chapters": [
+      {
+        "name": "第一章 持久化与内存管理",
+        "summary": "本章解决「宕机后数据还在吗」与「内存满了怎么办」两个问题。",
+        "sections": [
+          {
+            "name": "1.1 RDB 与 AOF",
+            "goal": "掌握两种持久化方式的特点与配置方式。",
+            "points": [
+              "RDB 是某一时刻的数据快照，文件紧凑、恢复快，但两次快照之间的数据可能丢失",
+              "AOF 记录写命令，数据安全性更高，但文件更大、恢复更慢",
+              "AOF 刷盘策略 always 最安全但性能最差，everysec 在安全与性能之间取得平衡",
+              "AOF 文件会随写入增长，需要通过重写压缩体积"
+            ],
+            "example": [
+              "save 900 1",
+              "save 300 10",
+              "appendonly yes",
+              "appendfsync everysec",
+              "BGREWRITEAOF"
+            ],
+            "exampleLang": "conf",
+            "pitfall": "只使用 RDB 且快照间隔较长，宕机时会丢失间隔内全部写入，对数据敏感的业务应开启 AOF。"
+          },
+          {
+            "name": "1.2 混合持久化与选择",
+            "goal": "能根据业务对数据丢失的容忍度选择持久化方案。",
+            "points": [
+              "混合持久化在 AOF 重写时以 RDB 格式写入头部，兼顾恢复速度与数据安全",
+              "纯缓存场景可只用 RDB 甚至关闭持久化，以换取更高性能",
+              "持久化不是备份，仍需额外做备份与异地保存",
+              "fork 子进程做持久化时会短暂阻塞，内存越大阻塞越明显"
+            ],
+            "example": [
+              "aof-use-rdb-preamble yes   # 开启混合持久化"
+            ],
+            "exampleLang": "conf",
+            "pitfall": "在内存巨大的实例上频繁触发 fork，会造成明显的主线程停顿与内存瞬时翻倍风险。"
+          },
+          {
+            "name": "1.3 内存淘汰策略",
+            "goal": "掌握八种淘汰策略的含义与选择依据。",
+            "points": [
+              "noeviction 在内存满时直接报错，适合作数据存储而非缓存的场景",
+              "allkeys-lru 与 allkeys-lfu 对所有键做淘汰，是纯缓存场景的常用选择",
+              "volatile-* 系列只淘汰设置了过期时间的键，需谨慎使用否则可能提前丢失数据",
+              "maxmemory 必须显式设置，否则 Redis 会一直占用内存直至被系统杀死"
+            ],
+            "example": [
+              "maxmemory 4gb",
+              "maxmemory-policy allkeys-lru"
+            ],
+            "exampleLang": "conf",
+            "pitfall": "使用 volatile-lru 但大量键没有设置过期时间，内存满时会因无可淘汰键而直接写入失败。"
+          }
+        ]
+      },
+      {
+        "name": "第二章 主从复制与哨兵",
+        "summary": "本章解决读扩展与单点故障问题。",
+        "sections": [
+          {
+            "name": "2.1 主从复制",
+            "goal": "理解全量同步与增量同步的触发条件。",
+            "points": [
+              "首次连接触发全量同步：主库生成 RDB 发给从库，并把期间的新命令缓存后补发",
+              "增量同步基于 repl_backlog 环形缓冲区，从库上报偏移量后主库只补发缺失部分",
+              "repl_backlog_size 过小会导致从库短暂断连后就退化为全量同步，造成主库压力激增",
+              "从库默认只读，可通过 replica-read-only 调整，但生产环境不建议放开"
+            ],
+            "example": [
+              "replicaof 10.0.0.2 6379",
+              "repl-backlog-size 64mb"
+            ],
+            "exampleLang": "conf",
+            "pitfall": "复制缓冲区过小，从库网络抖动后就触发全量同步，主库会因生成 RDB 而明显卡顿。"
+          },
+          {
+            "name": "2.2 哨兵机制与故障转移",
+            "goal": "理解哨兵的监控、通知、自动故障转移三个职责。",
+            "points": [
+              "哨兵持续监控主从节点，主观下线后需多个哨兵达成共识才判定客观下线",
+              "故障转移流程：选出领导者哨兵、从从库中选新主、切换其余从库、通知客户端",
+              "新主选择依据：优先级、复制偏移量、运行 id",
+              "哨兵自身也需部署奇数个节点，避免出现平票无法达成共识"
+            ],
+            "example": [
+              "sentinel monitor mymaster 10.0.0.2 6379 2",
+              "sentinel down-after-milliseconds mymaster 30000",
+              "sentinel failover-timeout mymaster 180000"
+            ],
+            "exampleLang": "conf",
+            "pitfall": "哨兵数量为偶数且在网络分区时，可能出现无法达成多数派而反复切换或无法切换的情况。"
+          },
+          {
+            "name": "2.3 复制风暴与优化",
+            "goal": "避免复制过程拖垮主库。",
+            "points": [
+              "复制风暴指大量从库同时向主库发起全量同步，导致主库频繁 fork 与带宽占满",
+              "缓解手段：错开重启时间、使用树形复制由从库再向下游复制、适当增大 repl_backlog",
+              "从库执行 BGSAVE 与重写 AOF 也会消耗资源，应避免与主库备份同时进行",
+              "读写分离时要注意主从延迟，刚写入就读的强一致场景应走主库"
+            ],
+            "example": [
+              "错峰重启：按分片或机房分批重启从库",
+              "树形复制：主库 → 中间层从库 → 边缘从库"
+            ],
+            "exampleLang": "text",
+            "pitfall": "写入后立刻从从库读取，在主从延迟下会读不到刚写入的数据，出现「写了却查不到」的现象。"
+          }
+        ]
+      },
+      {
+        "name": "第三章 Cluster 与高并发实践",
+        "summary": "本章解决单机内存与吞吐上限问题。",
+        "sections": [
+          {
+            "name": "3.1 分片与槽位",
+            "goal": "理解哈希槽的分片机制与多键操作限制。",
+            "points": [
+              "Redis Cluster 把键空间划分为 16384 个哈希槽，槽位分配到各主节点",
+              "键的槽位由 CRC16(key) 对 16384 取模得到",
+              "多键命令要求所有键在同一槽位，可用 hash tag 把相关键强制落到同一槽",
+              "客户端通过 MOVED 重定向感知槽位归属，集群拓扑可自动更新"
+            ],
+            "example": [
+              "SET user:{1001}:name \"张三\"",
+              "SET user:{1001}:age 20",
+              "# 使用 hash tag，两个键保证落在同一个槽"
+            ],
+            "exampleLang": "text",
+            "pitfall": "跨槽执行 MGET 或事务会直接报错，需要提前用 hash tag 设计好键的布局。"
+          },
+          {
+            "name": "3.2 集群伸缩与迁移",
+            "goal": "掌握扩缩容的操作流程与注意事项。",
+            "points": [
+              "扩容：加入新节点 → 分配槽位 → 迁移槽内数据 → 通知集群拓扑变更",
+              "缩容：先迁移出待下线节点的槽位，确认无数据后再移除节点",
+              "迁移过程中客户端可能收到 ASK 重定向，这是正常的过渡状态",
+              "集群要求至少 3 个主节点，并建议每个主节点配一个从节点以支持故障转移"
+            ],
+            "example": [
+              "redis-cli --cluster add-node 10.0.0.9:6379 10.0.0.2:6379",
+              "redis-cli --cluster reshard 10.0.0.2:6379",
+              "redis-cli --cluster check 10.0.0.2:6379"
+            ],
+            "exampleLang": "bash",
+            "pitfall": "迁移槽位时使用过大的批量参数，会长时间阻塞槽位访问，影响线上请求。"
+          },
+          {
+            "name": "3.3 高并发实践要点",
+            "goal": "掌握高并发场景下的关键取舍。",
+            "points": [
+              "Redis 命令处理是单线程的，任何慢命令都会阻塞后续所有请求",
+              "禁止在生产使用 KEYS、FLUSHALL 等阻塞命令，用 SCAN 分批遍历替代",
+              "用 Pipeline 批量发送减少网络往返，但单次批量不宜过大以免阻塞",
+              "热点键可通过多副本打散或本地缓存分担，避免单节点被打满"
+            ],
+            "example": [
+              "redis-cli --intrinsic-latency 100     # 检测固有延迟",
+              "redis-cli --latency-history           # 观察延迟历史变化",
+              "SLOWLOG GET 10                        # 查看慢命令"
+            ],
+            "exampleLang": "bash",
+            "pitfall": "把 Redis 当关系库使用，执行复杂的聚合计算，长耗时会阻塞整个实例。"
+          }
+        ]
+      }
+    ],
+    "questions": [
+      {
+        "type": "single",
+        "stem": "关于 RDB 与 AOF 的对比，下列说法正确的是？",
+        "options": [
+          "RDB 文件大、恢复慢",
+          "AOF 记录写命令，数据安全性更高",
+          "AOF 不需要重写",
+          "RDB 无法用于备份"
+        ],
+        "answer": 1,
+        "explanation": "AOF 记录写命令，可按策略刷盘，数据安全性更高，代价是文件更大、恢复更慢，需要重写压缩。",
+        "point": "持久化"
+      },
+      {
+        "type": "single",
+        "stem": "纯缓存场景下，常用的内存淘汰策略是？",
+        "options": ["noeviction", "volatile-ttl", "allkeys-lru", "allkeys-random 以外的策略均不可用"],
+        "answer": 2,
+        "explanation": "allkeys-lru 对所有键按最近最少使用淘汰，是纯缓存场景的常用选择；noeviction 会在内存满时直接报错。",
+        "point": "内存淘汰"
+      },
+      {
+        "type": "single",
+        "stem": "Redis Cluster 中键空间的哈希槽总数是？",
+        "options": ["1024", "4096", "16384", "65536"],
+        "answer": 2,
+        "explanation": "Redis Cluster 将键空间划分为 16384 个哈希槽，键通过 CRC16 取模映射到具体槽位。",
+        "point": "集群分片"
+      },
+      {
+        "type": "single",
+        "stem": "要让多个键保证落在同一个哈希槽，应使用什么机制？",
+        "options": ["Pipeline", "事务", "hash tag（花括号）", "Lua 脚本"],
+        "answer": 2,
+        "explanation": "在键中使用花括号包裹的 hash tag，Redis 只对花括号内内容计算槽位，从而保证相关键落在同一槽。",
+        "point": "多键操作"
+      },
+      {
+        "type": "single",
+        "stem": "哨兵部署为奇数个节点的主要原因是？",
+        "options": [
+          "节省机器资源",
+          "避免投票平票导致无法达成共识",
+          "提高读写性能",
+          "减少网络流量"
+        ],
+        "answer": 1,
+        "explanation": "哨兵需要多数派达成共识才能判定客观下线并执行故障转移，奇数节点可避免平票僵局。",
+        "point": "哨兵机制"
+      },
+      {
+        "type": "bool",
+        "stem": "repl_backlog_size 设置过小，会导致从库短暂断连后退化为全量同步，加重主库压力。",
+        "options": ["正确", "错误"],
+        "answer": 0,
+        "explanation": "正确。环形缓冲区不足时无法补发缺失的增量数据，从库只能重新做全量同步。",
+        "point": "主从复制"
+      },
+      {
+        "type": "bool",
+        "stem": "在生产环境使用 KEYS 命令遍历所有键是安全的，因为它是只读操作。",
+        "options": ["正确", "错误"],
+        "answer": 1,
+        "explanation": "错误。Redis 单线程处理命令，KEYS 会遍历全部键并阻塞其他请求，应改用 SCAN 分批遍历。",
+        "point": "高并发实践"
+      },
+      {
+        "type": "bool",
+        "stem": "开启读写分离后，刚写入主库的数据立即从从库读取，一定能够读到。",
+        "options": ["正确", "错误"],
+        "answer": 1,
+        "explanation": "错误。主从复制存在延迟，刚写入的数据可能尚未同步到从库，强一致读应走主库。",
+        "point": "读写分离"
+      }
+    ]
+  },
+  {
+    "id": 1001,
+    "name": "Java 微服务实战入门",
+    "mdFile": "Java微服务实战入门.md",
+    "intro": "从单体走向微服务，完整认识服务拆分、通信、治理与部署。",
+    "detail": "本课程先建立微服务的架构认知与服务拆分原则，再讲解注册发现、声明式调用与配置中心，最后覆盖网关、容错、链路追踪与容器化部署，形成微服务落地的完整视图。",
+    "chapters": [
+      {
+        "name": "第一章 微服务架构认知",
+        "summary": "本章讲清为什么要拆、怎么拆，以及整体技术栈的构成。",
+        "sections": [
+          {
+            "name": "1.1 从单体到微服务",
+            "goal": "理解单体架构的痛点与微服务的收益代价。",
+            "points": [
+              "单体应用的问题：代码耦合、构建变慢、难以按模块独立扩容、一处故障影响全局",
+              "微服务的收益：独立开发部署、按需扩容、技术异构、故障隔离",
+              "微服务的代价：分布式复杂度、运维成本、数据一致性、链路排查难度上升",
+              "微服务不是银弹，团队规模小、业务尚未稳定时单体往往更合适"
+            ],
+            "example": [
+              "单体：一个 war 包包含用户、课程、订单全部模块",
+              "微服务：user-service、course-service、order-service 独立部署与扩容"
+            ],
+            "exampleLang": "text",
+            "pitfall": "为了追求架构先进性而拆分过细，导致服务数量爆炸、一次需求要改十几个仓库。"
+          },
+          {
+            "name": "1.2 服务拆分原则",
+            "goal": "掌握按业务能力与领域边界拆分的方法。",
+            "points": [
+              "优先按业务能力拆分，例如用户、课程、订单、支付各成一个服务",
+              "强调高内聚低耦合，把经常一起变化的逻辑放在同一个服务内",
+              "避免分布式单体：服务虽然拆开了，但每次发布仍必须同时上线",
+              "数据库应避免跨服务直连，服务间通过接口交互，各自管理自己的数据"
+            ],
+            "example": [
+              "合理拆分：订单服务负责订单生命周期，用户服务负责账号与权限",
+              "不合理拆分：把订单的查询与写入拆成两个服务，导致二者强耦合"
+            ],
+            "exampleLang": "text",
+            "pitfall": "多个服务直连同一张表，表结构一改就牵动多个服务，等于没有拆分。"
+          },
+          {
+            "name": "1.3 技术栈全景",
+            "goal": "建立对微服务各组件的整体认识。",
+            "points": [
+              "基础组件：注册中心、配置中心、网关、服务调用、负载均衡",
+              "治理组件：熔断限流、链路追踪、日志聚合、监控告警",
+              "数据组件：分布式事务、消息队列、分布式缓存与分布式锁",
+              "部署组件：容器化、编排、CI/CD 流水线"
+            ],
+            "example": [
+              "典型组合：Nacos + Spring Cloud Gateway + OpenFeign + Sentinel + SkyWalking"
+            ],
+            "exampleLang": "text",
+            "pitfall": "一次性引入全部组件，团队尚未掌握就上生产，反而制造出更多故障点。"
+          }
+        ]
+      },
+      {
+        "name": "第二章 服务通信与注册发现",
+        "summary": "本章解决服务之间如何找到彼此并稳定调用的问题。",
+        "sections": [
+          {
+            "name": "2.1 服务注册与发现",
+            "goal": "理解注册中心的工作机制。",
+            "points": [
+              "服务启动时把自身地址注册到注册中心，并定期发送心跳表示存活",
+              "调用方从注册中心获取实例列表，本地缓存并感知变更",
+              "注册中心需具备高可用，通常部署为集群并保证数据一致",
+              "实例下线有主动注销与心跳超时剔除两种方式"
+            ],
+            "example": [
+              "spring:",
+              "  cloud:",
+              "    nacos:",
+              "      discovery:",
+              "        server-addr: 127.0.0.1:8848"
+            ],
+            "exampleLang": "yaml",
+            "pitfall": "注册中心单点部署，一旦不可用会导致新实例无法上线、调用方无法更新实例列表。"
+          },
+          {
+            "name": "2.2 声明式调用 OpenFeign",
+            "goal": "会用接口的方式发起远程调用。",
+            "points": [
+              "Feign 通过接口加注解声明远程调用，底层仍是 HTTP，屏蔽了手工拼装请求的过程",
+              "需在启动类开启 @EnableFeignClients，接口用 @FeignClient 指定服务名",
+              "集成负载均衡后可自动在多个实例间轮询或按权重选择",
+              "必须显式配置连接超时与读超时，否则默认值可能不适合业务"
+            ],
+            "example": [
+              "@FeignClient(name = \"course-service\")",
+              "public interface CourseClient {",
+              "    @GetMapping(\"/courses/{id}\")",
+              "    CourseVO getCourse(@PathVariable(\"id\") Long id);",
+              "}"
+            ],
+            "exampleLang": "java",
+            "pitfall": "Feign 接口的 @PathVariable 不写 value 在某些版本下会导致参数绑定失败，应显式指定名称。"
+          },
+          {
+            "name": "2.3 配置中心",
+            "goal": "理解配置集中管理与动态刷新的价值。",
+            "points": [
+              "配置中心统一管理多环境配置，避免配置散落在各服务的配置文件里",
+              "支持按命名空间与分组隔离环境与业务，防止测试配置污染生产",
+              "配置变更后可推送通知服务动态刷新，无需重启应用",
+              "敏感配置需要加密存储与权限控制，避免凭据泄露"
+            ],
+            "example": [
+              "spring:",
+              "  config:",
+              "    import: nacos:tj-course-dev.yaml",
+              "  cloud:",
+              "    nacos:",
+              "      config:",
+              "        server-addr: 127.0.0.1:8848"
+            ],
+            "exampleLang": "yaml",
+            "pitfall": "把数据库密码明文放在配置中心且不限制读取权限，任何能访问配置中心的人都能拿到凭据。"
+          }
+        ]
+      },
+      {
+        "name": "第三章 服务治理与部署",
+        "summary": "本章补齐稳定性保障与上线能力。",
+        "sections": [
+          {
+            "name": "3.1 网关与统一入口",
+            "goal": "理解网关在微服务中的定位。",
+            "points": [
+              "网关是外部流量唯一入口，负责路由转发、鉴权、限流与日志",
+              "下游服务信任网关注入的用户信息头，避免每个服务重复解析令牌",
+              "网关通过服务名转发，服务实例增减对客户端透明",
+              "网关层只处理横切关注点，不写业务逻辑"
+            ],
+            "example": [
+              "server:",
+              "  port: 10010",
+              "spring:",
+              "  cloud:",
+              "    gateway:",
+              "      routes:",
+              "        - id: course",
+              "          uri: lb://course-service",
+              "          predicates:",
+              "            - Path=/cs/**"
+            ],
+            "exampleLang": "yaml",
+            "pitfall": "把大量业务校验放在网关，导致网关成为难以测试与发布的巨型模块。"
+          },
+          {
+            "name": "3.2 容错与链路追踪",
+            "goal": "掌握稳定性保障与问题定位手段。",
+            "points": [
+              "超时、限流、熔断、降级是四类基本容错手段，超时是最基础的保障",
+              "熔断在下游持续失败时快速失败，避免线程资源被耗尽",
+              "链路追踪为每次请求分配 TraceId 并沿调用链透传，是分布式排查的前提",
+              "把 TraceId 输出到日志，才能把一次请求的全部日志串起来"
+            ],
+            "example": [
+              "Feign 集成熔断后可为每个远程调用指定 fallback",
+              "日志格式中加入 traceId 占位符以便检索"
+            ],
+            "exampleLang": "text",
+            "pitfall": "只做了熔断但没有配置降级兜底，熔断打开后用户只能看到报错页面。"
+          },
+          {
+            "name": "3.3 容器化部署",
+            "goal": "理解微服务的交付与运行方式。",
+            "points": [
+              "容器镜像把应用与运行环境一同打包，保证各环境行为一致",
+              "镜像应分层构建并只复制必要产物，减小体积、加快拉取",
+              "容器需要设置合理的内存与 CPU 限制，并让 JVM 感知容器限额",
+              "健康检查配合滚动更新，可实现不停机发布"
+            ],
+            "example": [
+              "FROM eclipse-temurin:17-jre",
+              "WORKDIR /app",
+              "COPY target/app.jar app.jar",
+              "ENTRYPOINT [\"java\",\"-jar\",\"/app/app.jar\"]"
+            ],
+            "exampleLang": "dockerfile",
+            "pitfall": "在容器中未配置 JVM 堆上限，JVM 可能按宿主机内存计算堆大小，最终被容器 OOM 杀死。"
+          }
+        ]
+      }
+    ],
+    "questions": [
+      {
+        "type": "single",
+        "stem": "关于微服务的代价，下列说法正确的是？",
+        "options": [
+          "微服务没有额外成本，越早拆越好",
+          "引入分布式复杂度、运维成本与数据一致性挑战",
+          "拆分后不再需要监控",
+          "拆分后单个服务无需考虑性能"
+        ],
+        "answer": 1,
+        "explanation": "微服务带来独立部署与扩容等收益，同时引入分布式复杂度、运维成本与一致性难题，需权衡取舍。",
+        "point": "微服务认知"
+      },
+      {
+        "type": "single",
+        "stem": "以下哪种情况最符合「合理拆分」？",
+        "options": [
+          "把订单的查询与写入拆成两个服务",
+          "多个服务直连同一张数据库表",
+          "按业务能力划分用户、课程、订单服务",
+          "每次发布必须同时上线所有服务"
+        ],
+        "answer": 2,
+        "explanation": "按业务能力拆分并保持高内聚低耦合是合理做法；直连同一张表和必须同时上线都属于分布式单体。",
+        "point": "服务拆分"
+      },
+      {
+        "type": "single",
+        "stem": "使用 OpenFeign 声明远程调用时，需要在启动类添加哪个注解？",
+        "options": ["@EnableFeignClients", "@EnableDiscoveryClient", "@EnableCircuitBreaker", "@EnableAsync"],
+        "answer": 0,
+        "explanation": "@EnableFeignClients 用于开启 Feign 客户端扫描，@FeignClient 接口才会被生成代理实现。",
+        "point": "服务调用"
+      },
+      {
+        "type": "single",
+        "stem": "微服务中调用方如何感知服务实例的增减？",
+        "options": [
+          "通过手工修改配置文件",
+          "通过注册中心的实例列表与变更通知",
+          "通过数据库表记录",
+          "通过重启应用读取最新地址"
+        ],
+        "answer": 1,
+        "explanation": "注册中心维护实例列表并在变更时通知客户端，调用方据此更新本地缓存，无需人工干预。",
+        "point": "注册发现"
+      },
+      {
+        "type": "single",
+        "stem": "关于链路追踪中的 TraceId，正确的做法是？",
+        "options": [
+          "只在网关生成但不必透传",
+          "为每次请求生成并沿调用链透传，同时输出到日志",
+          "每个服务各自生成独立 ID",
+          "仅在出错时生成"
+        ],
+        "answer": 1,
+        "explanation": "TraceId 必须沿调用链透传并写入日志，才能把一次请求跨多个服务的日志串联起来。",
+        "point": "链路追踪"
+      },
+      {
+        "type": "bool",
+        "stem": "多个微服务直连同一张数据库表，是合理的拆分方式。",
+        "options": ["正确", "错误"],
+        "answer": 1,
+        "explanation": "错误。直连同一张表会让表结构变更牵动多个服务，形成隐形耦合，违背服务自治原则。",
+        "point": "数据边界"
+      },
+      {
+        "type": "bool",
+        "stem": "远程调用必须显式设置超时时间，否则线程可能被长时间占用。",
+        "options": ["正确", "错误"],
+        "answer": 0,
+        "explanation": "正确。超时是最基础的容错手段，缺省无限等待会快速耗尽调用方的线程资源。",
+        "point": "容错"
+      },
+      {
+        "type": "bool",
+        "stem": "容器中运行 JVM 时无需设置堆上限，JVM 会正确识别容器内存限制。",
+        "options": ["正确", "错误"],
+        "answer": 1,
+        "explanation": "错误。JVM 在旧版本或未开启容器感知时会按宿主机内存计算堆大小，容易超出容器限额被 OOM 杀死。",
+        "point": "容器化部署"
+      }
+    ]
+  },
+  {
+    "id": 1011,
+    "name": "Spring Cloud 服务治理",
+    "mdFile": "SpringCloud服务治理.md",
+    "intro": "系统掌握 Spring Cloud 的注册中心、配置中心与服务治理组件。",
+    "detail": "本课程讲解 Spring Cloud 的组件体系与版本对应关系，深入注册中心与配置中心的选型与落地，讲清服务调用、负载均衡与超时重试，最后覆盖熔断降级、链路追踪与安全鉴权等治理能力。",
+    "chapters": [
+      {
+        "name": "第一章 Spring Cloud 概览",
+        "summary": "本章建立整体组件地图，避免在众多子项目中迷路。",
+        "sections": [
+          {
+            "name": "1.1 组件体系与版本",
+            "goal": "理解 Spring Cloud 与 Spring Boot 的版本对应关系。",
+            "points": [
+              "Spring Cloud 是一组子项目的集合，每个子项目解决一类分布式问题",
+              "Spring Cloud 版本与 Spring Boot 版本存在严格的对应关系，混用会导致启动失败",
+              "Netflix 系列组件多数已进入维护状态，新项目建议选用 Spring Cloud Alibaba 或其他活跃方案",
+              "spring-cloud-dependencies 通过 BOM 统一管理各子项目版本"
+            ],
+            "example": [
+              "<dependencyManagement>",
+              "  <dependencies>",
+              "    <dependency>",
+              "      <groupId>org.springframework.cloud</groupId>",
+              "      <artifactId>spring-cloud-dependencies</artifactId>",
+              "      <version>2023.0.1</version>",
+              "      <type>pom</type><scope>import</scope>",
+              "    </dependency>",
+              "  </dependencies>",
+              "</dependencyManagement>"
+            ],
+            "exampleLang": "xml",
+            "pitfall": "只升级 Spring Boot 而不调整 Spring Cloud 版本，会出现找不到类或配置项失效的问题。"
+          },
+          {
+            "name": "1.2 注册中心选型",
+            "goal": "能根据一致性要求选择注册中心。",
+            "points": [
+              "Eureka 遵循 AP 模型，优先保证可用性，节点间数据最终一致",
+              "Nacos 同时支持 AP 与 CP 模式，可配置临时实例与持久实例，是当前主流选择",
+              "Consul 与 ZooKeeper 更强一致，适合对注册数据一致性要求高的场景",
+              "注册中心需集群部署并做好健康检查，避免单点"
+            ],
+            "example": [
+              "spring:",
+              "  cloud:",
+              "    nacos:",
+              "      discovery:",
+              "        server-addr: 127.0.0.1:8848",
+              "        ephemeral: true   # 临时实例走 AP"
+            ],
+            "exampleLang": "yaml",
+            "pitfall": "在服务实例频繁上下线的环境中使用强一致注册中心，会因选主与同步开销带来额外延迟。"
+          },
+          {
+            "name": "1.3 配置中心",
+            "goal": "掌握多环境配置隔离与动态刷新。",
+            "points": [
+              "通过命名空间或分组隔离开发、测试、生产环境的配置",
+              "配置项按 dataId 组织，通常为「服务名-环境.yaml」的形式",
+              "动态刷新需配合 @RefreshScope 或在启动配置中开启自动刷新",
+              "数据库与第三方凭据应加密存储并限制访问权限"
+            ],
+            "example": [
+              "@RefreshScope",
+              "@RestController",
+              "public class ConfigController {",
+              "    @Value(\"${feature.enabled:false}\")",
+              "    private boolean enabled;",
+              "}"
+            ],
+            "exampleLang": "java",
+            "pitfall": "以为改了配置中心的值就会立即生效，未加 @RefreshScope 的 Bean 仍会持有旧值。"
+          }
+        ]
+      },
+      {
+        "name": "第二章 服务调用与负载均衡",
+        "summary": "本章解决服务之间如何稳定高效地互相调用。",
+        "sections": [
+          {
+            "name": "2.1 客户端负载均衡",
+            "goal": "理解客户端负载均衡与服务端负载均衡的差别。",
+            "points": [
+              "客户端负载均衡由调用方从实例列表中自行选择，减少一次网络跳转",
+              "Spring Cloud LoadBalancer 是当前的默认实现，替代了已进入维护状态的 Ribbon",
+              "常见策略：轮询、随机、权重、最少连接数",
+              "可自定义负载均衡策略以支持灰度或按区域就近访问"
+            ],
+            "example": [
+              "@Bean",
+              "ReactorLoadBalancer<ServiceInstance> randomLoadBalancer(",
+              "        Environment env, LoadBalancerClientFactory factory) {",
+              "    String name = env.getProperty(LoadBalancerClientFactory.PROPERTY_NAME);",
+              "    return new RandomLoadBalancer(factory.getLazyProvider(name, ServiceInstanceListSupplier.class), name);",
+              "}"
+            ],
+            "exampleLang": "java",
+            "pitfall": "在实例性能差异较大的集群中使用纯轮询，会把等量流量分给弱节点，导致响应时间被拖高。"
+          },
+          {
+            "name": "2.2 OpenFeign 实战",
+            "goal": "掌握 Feign 的常用配置与坑点。",
+            "points": [
+              "通过配置指定日志级别可在排查问题时输出请求与响应详情",
+              "Feign 默认不会传递请求头，需要配置拦截器透传鉴权信息",
+              "文件上传等场景需要引入额外的编码器支持",
+              "接口定义应与提供方保持一致，字段增删要保证向后兼容"
+            ],
+            "example": [
+              "@Bean",
+              "public RequestInterceptor authInterceptor() {",
+              "    return template -> template.header(\"Authorization\",",
+              "            currentToken());",
+              "}"
+            ],
+            "exampleLang": "java",
+            "pitfall": "忘记配置请求头拦截器，导致下游收不到鉴权信息而返回 401。"
+          },
+          {
+            "name": "2.3 超时重试与灰度",
+            "goal": "合理配置超时重试并实现简单的灰度分流。",
+            "points": [
+              "连接超时应短（如 1 秒），读超时按业务耗时设定（如 3 秒）",
+              "重试只适合幂等接口，且需限制次数并加入退避，避免放大流量",
+              "重试叠加限流不当会引发流量风暴，必须谨慎启用",
+              "灰度可通过自定义负载均衡策略按请求头或用户标签分流"
+            ],
+            "example": [
+              "spring:",
+              "  cloud:",
+              "    openfeign:",
+              "      client:",
+              "        config:",
+              "          default:",
+              "            connectTimeout: 1000",
+              "            readTimeout: 3000"
+            ],
+            "exampleLang": "yaml",
+            "pitfall": "对非幂等的下单接口开启自动重试，可能造成重复下单。"
+          }
+        ]
+      },
+      {
+        "name": "第三章 治理能力",
+        "summary": "本章补齐稳定性、可观测性与安全三方面能力。",
+        "sections": [
+          {
+            "name": "3.1 熔断降级",
+            "goal": "掌握熔断器的配置与降级实现。",
+            "points": [
+              "熔断器三态：关闭放行、打开拒绝、半开试探恢复",
+              "触发条件通常基于滑动窗口内的失败率或慢调用比例",
+              "降级方法必须与业务方法签名一致，用于返回兜底数据",
+              "降级返回的数据应可识别，避免被当作真实数据使用"
+            ],
+            "example": [
+              "@CircuitBreaker(name = \"courseService\", fallbackMethod = \"fallback\")",
+              "public CourseVO getCourse(Long id) { return courseClient.getCourse(id); }",
+              "",
+              "public CourseVO fallback(Long id, Throwable t) {",
+              "    return CourseVO.empty(id);",
+              "}"
+            ],
+            "exampleLang": "java",
+            "pitfall": "降级方法签名与被保护方法不一致，会导致 fallback 无法匹配而在运行时直接抛异常。"
+          },
+          {
+            "name": "3.2 链路追踪与监控",
+            "goal": "建立跨服务的问题定位能力。",
+            "points": [
+              "Micrometer Tracing 负责生成与传播 TraceId，可对接多种后端存储",
+              "把 TraceId 写入日志可以按请求维度检索全部日志",
+              "指标采集关注接口耗时、错误率、线程池与连接池状态",
+              "健康检查端点可用于容器编排的存活与就绪探针"
+            ],
+            "example": [
+              "management:",
+              "  endpoints:",
+              "    web:",
+              "      exposure:",
+              "        include: health,info,metrics,prometheus"
+            ],
+            "exampleLang": "yaml",
+            "pitfall": "只采集指标不做告警，问题往往由用户先发现而不是监控先发现。"
+          },
+          {
+            "name": "3.3 安全与鉴权",
+            "goal": "在微服务中建立统一的认证与授权方案。",
+            "points": [
+              "常见做法是网关统一校验令牌，解析出用户身份后写入请求头下传",
+              "下游服务信任来自内网的头部信息，通过内网隔离防止请求被伪造",
+              "服务间调用可使用内部令牌或双向 TLS 做身份校验",
+              "敏感操作应有独立的权限校验，不能仅依赖网关层的登录判断"
+            ],
+            "example": [
+              "网关校验 JWT 后注入请求头：",
+              "X-User-Id: 42",
+              "下游直接读取该头部获取当前用户"
+            ],
+            "exampleLang": "text",
+            "pitfall": "下游服务直接信任外部传入的用户标识头，攻击者可伪造身份越权访问。"
+          }
+        ]
+      }
+    ],
+    "questions": [
+      {
+        "type": "single",
+        "stem": "Spring Cloud LoadBalancer 属于哪种负载均衡？",
+        "options": ["服务端负载均衡", "客户端负载均衡", "DNS 负载均衡", "硬件负载均衡"],
+        "answer": 1,
+        "explanation": "Spring Cloud LoadBalancer 由调用方自行从实例列表中选择目标实例，属于客户端负载均衡。",
+        "point": "负载均衡"
+      },
+      {
+        "type": "single",
+        "stem": "关于注册中心的 CAP 取舍，Nacos 的特点是？",
+        "options": [
+          "只支持 CP 模式",
+          "只支持 AP 模式",
+          "同时支持 AP 与 CP，可按实例类型配置",
+          "不支持集群部署"
+        ],
+        "answer": 2,
+        "explanation": "Nacos 支持临时实例走 AP、持久实例走 CP，可按业务对一致性与可用性的要求灵活选择。",
+        "point": "注册中心选型"
+      },
+      {
+        "type": "single",
+        "stem": "修改配置中心的值后，若希望 Bean 中的配置立即生效，需要添加什么？",
+        "options": ["@RefreshScope", "@Lazy", "@Primary", "@DependsOn"],
+        "answer": 0,
+        "explanation": "@RefreshScope 让 Bean 在配置刷新时被重新创建，从而读到最新配置值。",
+        "point": "配置中心"
+      },
+      {
+        "type": "single",
+        "stem": "Feign 调用下游服务时收不到鉴权信息，最可能的原因是？",
+        "options": [
+          "没有配置请求头拦截器",
+          "没有开启服务注册",
+          "读超时设置过短",
+          "没有使用负载均衡"
+        ],
+        "answer": 0,
+        "explanation": "Feign 默认不传递请求头，需要配置 RequestInterceptor 显式把令牌等信息透传到下游。",
+        "point": "Feign 实战"
+      },
+      {
+        "type": "single",
+        "stem": "熔断器打开状态下对请求的处理方式是？",
+        "options": ["正常放行", "直接拒绝并走降级", "放行一半请求", "转发到其他服务"],
+        "answer": 1,
+        "explanation": "打开状态直接拒绝请求并触发降级逻辑，避免继续调用已经故障的下游；半开状态才放行少量请求试探。",
+        "point": "熔断降级"
+      },
+      {
+        "type": "bool",
+        "stem": "自动重试适用于所有接口，包括非幂等的下单接口。",
+        "options": ["正确", "错误"],
+        "answer": 1,
+        "explanation": "错误。非幂等接口重试可能造成重复下单等严重后果，重试只应针对幂等操作并限制次数。",
+        "point": "超时重试"
+      },
+      {
+        "type": "bool",
+        "stem": "把 TraceId 写入日志，可以按单次请求维度检索跨多个服务的全部日志。",
+        "options": ["正确", "错误"],
+        "answer": 0,
+        "explanation": "正确。TraceId 沿调用链透传并写入日志后，可用它把一次请求在不同服务中的日志串联起来。",
+        "point": "链路追踪"
+      },
+      {
+        "type": "bool",
+        "stem": "下游服务可以直接信任外部请求传入的用户标识请求头，以此判断当前用户身份。",
+        "options": ["正确", "错误"],
+        "answer": 1,
+        "explanation": "错误。外部请求头可被伪造，应仅信任网关注入的头部，并通过内网隔离防止绕过网关。",
+        "point": "安全鉴权"
+      }
+    ]
+  }
+]

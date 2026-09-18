@@ -1,6 +1,8 @@
 <!-- 公用底部部组件 -->
 <template>
-  <footer>
+  <!-- class="siteFooter" 是给「对话页隐藏页脚」用的稳定钩子（见 pages/main/ai.vue 的非 scoped 样式），
+       不要删；它不参与任何视觉样式。 -->
+  <footer class="siteFooter">
     <div class="container">
       <div class="links">
           <span v-for="item in Links" :key="item.title" @click="goDetails(item.link)">{{item.title}}</span>
@@ -41,7 +43,7 @@
 footer {
   width: 100%;
   background-color: var(--color-white);
-  border-top: 1px solid #EEEEEE;
+  border-top: 1px solid var(--color-border);
   text-align: left;
   padding: 35px 0;
   font-size: 14px;

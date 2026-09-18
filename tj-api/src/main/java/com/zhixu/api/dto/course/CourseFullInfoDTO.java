@@ -34,6 +34,9 @@ public class CourseFullInfoDTO {
     private Long thirdCateId;
     @ApiModelProperty("课程总节数")
     private Integer sectionNum;
+
+    @ApiModelProperty("是否免费课程 1是 0否")
+    private Integer free;
     @ApiModelProperty("课程购买有效期结束时间")
     private LocalDateTime purchaseEndTime;
     @ApiModelProperty("课程学习有效期")

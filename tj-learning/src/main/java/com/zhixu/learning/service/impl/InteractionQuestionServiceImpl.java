@@ -383,7 +383,7 @@ public class InteractionQuestionServiceImpl extends ServiceImpl<InteractionQuest
         }
         Map<Long, String> cataMap = catas.stream().collect(Collectors.toMap(CataSimpleInfoDTO::getId, CataSimpleInfoDTO::getName));
         //4.远程批量查询用户信息
-        uIds.addAll(course.getTeacherIds()); //管理端才查询教师信息
+        uIds.addAll(course.getTeacherIds()); //管理端才查询讲师信息
         List<UserDTO> userDTOS = userClient.queryUserByIds(uIds);
         if(CollUtils.isEmpty(userDTOS)){
             throw new BizIllegalException("用户集合不存在");

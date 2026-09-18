@@ -60,4 +60,15 @@ public class QuestionFormDTO implements Serializable {
     @ApiModelProperty("答案解析")
     @Size(max = 300, min = 5, message = "答案解析长度为5-300")
     private String analysis;
+
+    @ApiModelProperty("所属课程id（教师端录题必填）")
+    private Long courseId;
+
+    /**
+     * 可见范围（P21）：0 仅我 / 1 公开到平台。
+     * **不传 = 不动**（改题时保持原值）；新增时不传按 0（仅我）—— 与库列默认一致，
+     * 「默认私有、主动公开」是既定模型。
+     */
+    @ApiModelProperty("可见范围：0 仅我 / 1 公开到平台；不传=新增按仅我、编辑保持原值")
+    private Integer visibility;
 }

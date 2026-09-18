@@ -300,6 +300,18 @@ public class NoteServiceImpl extends ServiceImpl<NoteMapper, Note> implements IN
     }
 
     @Override
+    public Integer countMyNotes() {
+        Long userId = UserContext.getUser();
+        if (userId == null) {
+            return 0;
+        }
+        // 只算自己的、未被隐藏的笔记
+        return Math.toIntExact(lambdaQuery()
+                .eq(Note::getUserId, userId)
+                .eq(Note::getHidden, false)
+                .count());
+    }
+
     public void removeMyNote(Long id) {
         // 1.获取用户
         Long userId = UserContext.getUser();

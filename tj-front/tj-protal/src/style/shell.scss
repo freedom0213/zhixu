@@ -1,0 +1,469 @@
+// =============================================================================
+// 学员端外壳样式（Student Shell）
+// -----------------------------------------------------------------------------
+// 作用域：只作用于 .studentShell 容器内部，**不影响官网营销页**（首页 / 课程详情 /
+//         搜索 / 购物车 / 支付 / 登录）现有的 Header + Footer + 玻璃卡片体系。
+//
+// 视觉基线：Apple 设计语言
+//   · 全站只保留 1 个强调色（--sa），层级靠「色差 / 留白 / 圆角」建立
+//   · 正文界面几乎不用阴影，卡片靠「白底 + 发丝线」；阴影只留给浮层
+//   · 状态色只出现在状态文字与图标上，不进入按钮和背景
+//
+// 布局策略：sidebar / topbar 用 position: sticky + 自然文档流。
+//   刻意不做「外壳定高 + 内容区内部滚动」——那条路要求高度链上每一层都有确定高度，
+//   一旦某层缺高度就会退化成内容高度，导致内部滚动区被撑开（本项目踩过两次）。
+//   sticky 方案下整页自然滚动，无需维护高度链。
+// =============================================================================
+
+.studentShell {
+  // ---- 色板 ----
+  --sa: #0066cc;              // 强调：CTA / 选中 / 链接 / 进度
+  --sa-hover: #0071e3;
+  --sa-soft: #e8f1fc;         // 强调浅底：选中态 / 徽标 / 浮层
+  --s-ink: #1d1d1f;           // 主文字
+  --s-ink-2: #6e6e73;         // 次级文字
+  --s-ink-3: #86868b;         // 弱文字
+  --s-ink-4: #a1a1a6;         // 占位 / 禁用
+  --s-hairline: #e8e8ed;      // 发丝线（边框）
+  --s-divider: #f0f0f0;       // 分割线
+  --s-canvas: #f5f5f7;        // 页面底
+  --s-card: #ffffff;          // 卡片
+  --s-soft: #f5f5f7;          // 浅底块（输入框 / 标签 / 次级按钮）
+  --s-ok: #34c759;            // 状态：已完成 / 答对
+  --s-warn: #ff9f0a;          // 状态：进行中
+  --s-danger: #ff3b30;        // 状态：答错 / 预警
+
+  // ---- 圆角 ----
+  --s-r-sm: 8px;
+  --s-r-md: 12px;
+  --s-r-lg: 18px;
+  --s-r-xl: 20px;
+
+  // ---- 阴影（仅浮层使用）----
+  --s-sh-pop: 0 14px 32px -6px rgba(0, 0, 0, 0.14);
+
+  // ---- 尺寸 ----
+  --s-sidebar-w: 248px;
+  --s-topbar-h: 64px;
+
+  display: flex;
+  align-items: stretch;
+  min-height: 100vh;
+  min-width: 1220px;
+  // 平底色覆盖官网 html 上的渐变底衬（学员端刻意用纯平底，与设计稿一致）
+  background: var(--s-canvas);
+  color: var(--s-ink);
+  font-size: 14px;
+  line-height: 1.6;
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+}
+
+// -----------------------------------------------------------------------------
+// 左侧栏
+// -----------------------------------------------------------------------------
+.sb {
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  flex: 0 0 var(--s-sidebar-w);
+  width: var(--s-sidebar-w);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 20px;
+  background: var(--s-card);
+  border-right: 1px solid var(--s-hairline);
+
+  &__logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 40px;
+    flex: 0 0 auto;
+  }
+  &__mark {
+    display: block;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+  }
+  &__name {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.2px;
+    color: var(--s-ink);
+  }
+
+  &__nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 44px;
+    padding: 0 12px;
+    border-radius: 10px;
+    color: #333;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.16s ease, color 0.16s ease;
+    -webkit-tap-highlight-color: transparent;
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.035);
+    }
+
+    // 当前页：浅底药丸 + 主色文字 + 主色图标（三重标识）
+    &.is-active {
+      background: var(--sa-soft);
+      color: var(--sa);
+      font-weight: 600;
+
+      .sb__ic {
+        color: var(--sa);
+      }
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--sa-hover);
+      outline-offset: 2px;
+    }
+  }
+
+  &__ic {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+    color: var(--s-ink-2);
+
+    svg {
+      display: block;
+      width: 20px;
+      height: 20px;
+    }
+  }
+
+  &__label {
+    font-size: 15px;
+    line-height: 20px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__badge {
+    margin-left: auto;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 10px;
+    background: var(--sa);
+    color: #fff;
+    font-size: 11px;
+    line-height: 20px;
+    text-align: center;
+    font-weight: 500;
+  }
+
+  // ---- 底部用户块 ----
+  &__user {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 64px;
+    padding: 10px;
+    border-radius: 12px;
+    background: var(--s-soft);
+    cursor: pointer;
+    transition: background-color 0.16s ease;
+
+    &:hover {
+      background: #eff0f2;
+    }
+    &:focus-visible {
+      outline: 2px solid var(--sa-hover);
+      outline-offset: 2px;
+    }
+  }
+  &__avatar {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #d8dee8;
+  }
+  &__uinfo {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  &__uname {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--s-ink);
+    line-height: 20px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  &__ustatus {
+    font-size: 12px;
+    color: var(--s-ink-2);
+    line-height: 17px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  &__chev {
+    display: flex;
+    flex: 0 0 16px;
+    color: var(--s-ink-4);
+  }
+
+  // 退出登录（P22-fix）：侧栏最底部的弱化操作，悬停转警示色
+  &__signout {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    flex: 0 0 auto;
+    margin-top: 6px;
+    padding: 9px 12px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--s-ink-3);
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+
+    &:hover {
+      background: rgba(229, 72, 77, 0.08);
+      color: #c0392b;
+    }
+  }
+
+  &__signoutIc {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
+
+    svg {
+      display: block;
+      width: 16px;
+      height: 16px;
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+// 右侧主区
+// -----------------------------------------------------------------------------
+.main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+// -----------------------------------------------------------------------------
+// 顶部工具栏
+// -----------------------------------------------------------------------------
+.tb {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: var(--s-topbar-h);
+  flex: 0 0 var(--s-topbar-h);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 48px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: saturate(180%) blur(18px);
+  -webkit-backdrop-filter: saturate(180%) blur(18px);
+  border-bottom: 1px solid var(--s-hairline);
+
+  // 不支持 backdrop-filter 时退化为实色，避免文字叠在内容上不可读
+  @supports not ((backdrop-filter: blur(4px)) or (-webkit-backdrop-filter: blur(4px))) {
+    background: #fff;
+  }
+
+  &__title {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    line-height: 28px;
+    color: var(--s-ink);
+    white-space: nowrap;
+  }
+
+  &__right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__search {
+    position: relative;
+    width: 240px;
+    height: 36px;
+    flex: 0 0 240px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 14px;
+    border-radius: 18px;
+    background: var(--s-soft);
+    transition: box-shadow 0.16s ease, background-color 0.16s ease;
+
+    &:focus-within {
+      background: #fff;
+      box-shadow: inset 0 0 0 1.5px var(--sa);
+    }
+
+    svg {
+      flex: 0 0 16px;
+      color: var(--s-ink-3);
+    }
+
+    input {
+      flex: 1 1 auto;
+      min-width: 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      font-size: 13px;
+      line-height: 16px;
+      color: var(--s-ink);
+      font-family: inherit;
+
+      &::placeholder {
+        color: var(--s-ink-3);
+      }
+    }
+  }
+
+  &__btn {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 50%;
+    background: var(--s-soft);
+    color: var(--s-ink-2);
+    cursor: pointer;
+    transition: background-color 0.16s ease, color 0.16s ease;
+
+    &:hover {
+      background: #eaebee;
+      color: var(--s-ink);
+    }
+    &:focus-visible {
+      outline: 2px solid var(--sa-hover);
+      outline-offset: 2px;
+    }
+
+    // 带文字的宽按钮（如「优惠券」）：由 36px 圆形改成胶囊，文字横排不换行
+    &--wide {
+      width: auto;
+      flex: 0 0 auto;
+      gap: 6px;
+      padding: 0 14px 0 12px;
+      border-radius: 18px;
+    }
+  }
+
+  &__btnText {
+    font-size: 13px;
+    line-height: 16px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+}
+
+// -----------------------------------------------------------------------------
+// 内容区
+// -----------------------------------------------------------------------------
+.body {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 40px 48px;
+}
+
+// -----------------------------------------------------------------------------
+// 通用原语
+// -----------------------------------------------------------------------------
+.s-card {
+  background: var(--s-card);
+  border-radius: var(--s-r-lg);
+  box-shadow: inset 0 0 0 1px rgba(16, 24, 40, 0.055);
+}
+
+// 区块标题：页面内二级标题（对应设计稿 21px）
+.s-h2 {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  line-height: 28px;
+  color: var(--s-ink);
+}
+
+// 卡片标题（对应设计稿 15px）
+.s-h3 {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+  color: var(--s-ink);
+}
+
+.s-muted {
+  color: var(--s-ink-3);
+}
+
+// 保证键盘可达：所有可交互元素统一可见焦点态
+.studentShell a:focus-visible,
+.studentShell button:focus-visible,
+.studentShell input:focus-visible,
+.studentShell [tabindex]:focus-visible {
+  outline: 2px solid var(--sa-hover);
+  outline-offset: 2px;
+}
+
+// 尊重系统「减弱动效」设置
+@media (prefers-reduced-motion: reduce) {
+  .studentShell *,
+  .studentShell *::before,
+  .studentShell *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

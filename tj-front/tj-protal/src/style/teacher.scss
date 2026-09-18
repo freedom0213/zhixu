@@ -1,0 +1,246 @@
+// =============================================================================
+// 教师端外壳样式（Teacher Shell）
+// -----------------------------------------------------------------------------
+// 作用域：只作用于 .teacherShell 容器内部，不影响学员端 / 官网。
+//
+// 复用心思：左侧栏（.sb）、顶栏（.tb）、内容区（.body）等**基础原语样式**不在本文件里，
+// 它们来自 shell.scss —— 那些规则读的是容器上的 CSS 变量，所以只要本文件在
+// .teacherShell 上把同名变量定义好，同一套原语就能直接用在教师端。
+// 两个外壳的差异只在「导航数据」和「顶栏右侧控件」，那是组件层的事，不该靠样式分叉。
+//
+// ⚠️ 页面内**不要**再用 .main / .body / .tb 这类与外壳同名的类 ——
+// shell.scss 是非 scoped 的，重名会让自动化选择器选到外壳元素（本项目踩过两次）。
+// 页面内请使用带前缀的专属类名（如 .q-xxx）。
+// =============================================================================
+
+.teacherShell {
+  // ---- 色板（与学员端同一套品牌色，教师端不另起一套）----
+  --sa: #0066cc; // 强调：CTA / 选中 / 链接
+  --sa-hover: #0071e3;
+  --sa-soft: #e8f1fc; // 强调浅底：选中态 / 徽标 / 浮层
+  --s-ink: #1d1d1f; // 主文字
+  --s-ink-2: #6e6e73; // 次级文字
+  --s-ink-3: #86868b; // 弱文字
+  --s-ink-4: #a1a1a6; // 占位 / 禁用
+  --s-hairline: #e8e8ed; // 发丝线
+  --s-divider: #f0f0f0; // 分割线
+  --s-canvas: #f5f5f7; // 页面底
+  --s-card: #ffffff; // 卡片
+  --s-soft: #f5f5f7; // 浅底块
+  --s-ok: #34c759;
+  --s-warn: #ff9f0a;
+  --s-danger: #ff3b30;
+
+  // ---- 圆角 ----
+  --s-r-sm: 8px;
+  --s-r-md: 12px;
+  --s-r-lg: 18px;
+  --s-r-xl: 20px;
+
+  // ---- 阴影（仅浮层使用）----
+  --s-sh-pop: 0 14px 32px -6px rgba(0, 0, 0, 0.14);
+
+  // ---- 尺寸（与设计稿一致：侧栏 248 / 顶栏 64）----
+  --s-sidebar-w: 248px;
+  --s-topbar-h: 64px;
+
+  display: flex;
+  align-items: stretch;
+  min-height: 100vh;
+  min-width: 1220px;
+  background: var(--s-canvas);
+  color: var(--s-ink);
+  font-size: 14px;
+  line-height: 1.6;
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+}
+
+// -----------------------------------------------------------------------------
+// 教师端顶栏的少量差异
+// -----------------------------------------------------------------------------
+.teacherShell .tb {
+  // 教师端搜索范围更宽（课程 / 题目 / 学生），加宽到 260 更贴合设计稿
+  &__search {
+    width: 260px;
+    flex: 0 0 260px;
+  }
+}
+
+// -----------------------------------------------------------------------------
+// 教师端通用按钮（.q-btn）
+// -----------------------------------------------------------------------------
+// 放在这里而不是各页面的 scoped 样式里 —— 因为<scoped> 只作用于组件自己的模板，
+// 子组件（如题目预览抽屉）里的按钮拿不到父页面的样式。这些是跨页面复用的基础控件。
+.teacherShell {
+  .q-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    padding: 0 18px;
+    border: 0;
+    border-radius: 20px;
+    background: var(--s-soft);
+    color: #333;
+    font-size: 14px;
+    font-family: inherit;
+    line-height: 20px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color 0.16s ease, color 0.16s ease;
+
+    &:hover {
+      background: #eaebee;
+    }
+
+    &--primary {
+      background: var(--sa);
+      color: #fff;
+      font-weight: 500;
+
+      &:hover {
+        background: var(--sa-hover);
+      }
+    }
+
+    &--sm {
+      height: 32px;
+      padding: 0 14px;
+      font-size: 13px;
+      border-radius: 16px;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  // 行内文字动作（表格操作列用）—— 用按钮保证键盘可达，但视觉上是链接
+  .q-act {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--sa);
+    font-size: 12px;
+    font-family: inherit;
+    line-height: 18px;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+
+    &--muted {
+      color: var(--s-ink-2);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 教师端通用「胶囊多选」（.q-chips / .q-chip / .q-select）
+  // ---------------------------------------------------------------------------
+  // ⚠️ 这三个类原先只写在 questions.vue 的 <scoped> 样式里 → 录题页（questionEdit.vue）
+  //    的「题型 / 难度 / 知识点」按钮**完全没有样式**：看起来就是裸文字、点了也没有
+  //    选中反馈。用户报的现象是「点不动、点了没反应」——**功能其实生效了，纯视觉缺失**。
+  //    跨页面复用的基础控件必须放全局，别再写进单个页面的 scoped 里。
+  .q-chips {
+    display: flex;
+    gap: 8px;
+
+    &--wrap {
+      flex-wrap: wrap;
+    }
+  }
+
+  .q-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 36px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 18px;
+    background: var(--s-soft);
+    color: #333;
+    font-size: 13px;
+    font-family: inherit;
+    line-height: 20px;
+    cursor: pointer;
+    transition: background-color 0.16s ease, color 0.16s ease;
+
+    &:hover {
+      background: #eaebee;
+    }
+
+    &.is-on {
+      background: var(--sa);
+      color: #fff;
+      font-weight: 500;
+    }
+  }
+
+  // 胶囊下拉（题库筛选 / 录题选所属课程）
+  .q-select {
+    height: 36px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 18px;
+    background: var(--s-soft);
+    color: #333;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    max-width: 150px;
+
+    &--sm {
+      height: 32px;
+      border-radius: 16px;
+      font-size: 12px;
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+// 键盘可达性 & 动效偏好（与学员端同一套约定）
+// -----------------------------------------------------------------------------
+.teacherShell a:focus-visible,
+.teacherShell button:focus-visible,
+.teacherShell input:focus-visible,
+.teacherShell select:focus-visible,
+.teacherShell [tabindex]:focus-visible {
+  outline: 2px solid var(--sa-hover);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .teacherShell *,
+  .teacherShell *::before,
+  .teacherShell *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+// -----------------------------------------------------------------------------
+// 主体居中（2026-09-15 用户反馈：宽屏下内容贴侧栏偏左，要求居中但不拉伸）
+// -----------------------------------------------------------------------------
+// 设计口径：侧栏 248 + 顶栏 1192 + 版心 1096（顶栏 1192 内含左右 48 padding，
+// 内容恰好与版心同宽同轴）。页面根已有 max-width:1096，这里只负责「居中」：
+//   · 顶栏背景保持通栏，内容收进 1096 版心并居中（与正文同一根中轴；窄屏退回 48px 内边距）
+//   · 内容区的直接子元素（各页面根）自动左右居中
+.teacherShell {
+  > .main > .tb {
+    padding-left: max(48px, calc((100% - 1096px) / 2));
+    padding-right: max(48px, calc((100% - 1096px) / 2));
+  }
+
+  > .main > .body > * {
+    margin-left: auto;
+    margin-right: auto;
+  }
+}

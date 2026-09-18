@@ -36,7 +36,10 @@ public class LearningRecordController {
     }
     @ApiOperation("提交学习记录")
     @PostMapping
-    public void addLearningRecord(LearningRecordFormDTO recordFormDTO) {
+    // 🔴 P25：必须 @RequestBody —— 前端（老学习页与新学员端）都是用 JSON body 发的，
+    //    原来按 form 绑定 → body 里 lessonId/sectionId/moment/duration 全部收不到，
+    //    写库时 lesson_id 为 null 直接 500 → **学习记录一条都没落过，完成状态从来没生效**。
+    public void addLearningRecord(@RequestBody LearningRecordFormDTO recordFormDTO) {
         recordService.addLearningRecord(recordFormDTO);
     }
 

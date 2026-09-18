@@ -22,4 +22,10 @@ public class QuestionPageQuery extends PageQuery {
     private String keyword;
     @ApiModelProperty("题目录入者id")
     private Long creater;
+    @ApiModelProperty("状态，1：可用，0：已停用（不传查全部）")
+    private Integer status;
+    @ApiModelProperty("所属课程id（教师端按课程筛题）")
+    private Long courseId;
+    @ApiModelProperty("可见范围口径：visible=公开的∪我出的（题库列表默认）；public=只看公开；mine=只看我出的；不传=不过滤")
+    private String visibilityScope;
 }

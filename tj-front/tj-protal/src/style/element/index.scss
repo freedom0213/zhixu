@@ -2,7 +2,7 @@
 @forward 'element-plus/theme-chalk/src/common/var.scss' with (
   $colors: (
     'primary': (
-      'base': #2080F7,
+      'base': #3B82F6,
     ),
   ),
 );
@@ -10,10 +10,12 @@
 .el-collapse-item__content{
   font-size: 14px;
 }
-// Elmessage 
+// Elmessage
+// 注意：历史遗留——全局将所有 el-button 染为主题色（含"取消"等次级按钮），
+// 本次仅将硬编码色值替换为 token，保持染色行为不变以避免回归
 .el-button{
-  background: #2080F7 !important;
-  border-radius: 4px;
+  background: var(--color-main) !important;
+  border-radius: var(--radius-sm);
 }
 
 // 表单 相关
@@ -32,6 +34,9 @@
   box-shadow:0 0 0 1px var(--color-font1) inset;
 }
 // 弹框 dialog
+.el-dialog{
+  border-radius: var(--radius-lg);
+}
 .el-dialog__header{
   // padding-bottom: 0;
   margin-right: 0;
@@ -39,8 +44,8 @@
 
 .el-pagination.is-background .btn-next, .el-pagination.is-background .btn-prev, .el-pagination.is-background .el-pager li{
   background-color: #fff;
-  border: 1px solid #D9D9D9;
-  border-radius: 2px;
+  border: 1px solid #E3E5E9;
+  border-radius: var(--radius-sm);
 }
 .el-pagination__sizes .el-input__wrapper{
   padding: 1px 11px;
@@ -53,7 +58,7 @@
 }
 .el-message-box__btns .el-button:hover, .el-message-box__btns .el-button:active{
   background: #CDD3E0 !important;
-  color: #19232B;
+  color: var(--color-font1);
   border:solid 1px transparent;
 }
 .el-message-box__btns .el-button--primary{
@@ -61,12 +66,12 @@
   color: #fff;
 }
 .el-message-box__btns .el-button--primary:hover{
-  background: #519FFF !important;
+  background: var(--color-hover) !important;
   color: #fff;
   border:solid 1px transparent;
 }
 .el-message-box__btns .el-button--primary:active{
-  background: #1C55CF !important;
+  background: var(--color-active) !important;
   color: #fff;
   border:solid 1px transparent;
 }

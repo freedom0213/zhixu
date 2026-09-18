@@ -32,3 +32,51 @@ learnling.txt
 # Editor / tooling scratch.
 .reasonix/
 .vscode/
+# =============================================================================
+# 老站前端代码（学员端已取代老站，2026-09-14）
+# 说明：文件仍保留在项目目录中供参考/复用，但不再纳入 Git 管理，也不会推到远端。
+# 新学员端（src/pages/student、src/components/shell）与登录页不受影响；
+# 老学习页的 components 子目录仍被新学习页复用，因此保持跟踪。
+# =============================================================================
+tj-front/tj-protal/src/pages/main/
+tj-front/tj-protal/src/pages/personal/
+tj-front/tj-protal/src/pages/pay/
+tj-front/tj-protal/src/pages/classDetails/
+tj-front/tj-protal/src/pages/classList/
+tj-front/tj-protal/src/pages/classSearch/
+tj-front/tj-protal/src/pages/ask/
+tj-front/tj-protal/src/pages/result/
+tj-front/tj-protal/src/pages/footer/
+tj-front/tj-protal/src/pages/layouts/
+tj-front/tj-protal/src/components/result/
+tj-front/tj-protal/src/assets/tcadpter/
+tj-front/tj-protal/src/router/modules/base.js
+tj-front/tj-protal/src/router/modules/components.js
+tj-front/tj-protal/src/router/modules/others.js
+tj-front/tj-protal/src/pages/learning/index.vue
+tj-front/tj-protal/src/pages/learning/index.scss
+tj-front/tj-protal/src/pages/learning/components/demoCourseContent.js
+tj-front/tj-protal/src/components/AskChapterItems.vue
+tj-front/tj-protal/src/components/Breadcrumb.vue
+tj-front/tj-protal/src/components/ClassCards.vue
+tj-front/tj-protal/src/components/CouponCards.vue
+tj-front/tj-protal/src/components/MainTitle.vue
+tj-front/tj-protal/src/components/TableSwitchBar.vue
+tj-front/tj-protal/src/utils/wxLogin.js
+tj-front/tj-protal/src/config/style.js
+tj-front/tj-protal/src/style/font_style/iconfont.js
+
+# =============================================================================
+# 开发过程资料（2026-09-18 补）
+# 说明：这些是本机开发时产生的**临时/私人资料**，不是项目源码，绝不能推到公开仓库：
+#   .workbuddy/         AI 协作缓存、开发记忆、调试探针脚本、数据库备份、构建校验产物（约 31MB）
+#   .workbuddy-ai/      本地 AI 工具链数据
+#   .vite/              Vite 依赖预构建缓存
+#   deploy/backup/      数据库备份 SQL
+#   data/course-knowledge 与 data/platform-knowledge 是**演示用知识库内容**，需要随仓库走，故不忽略。
+# =============================================================================
+.workbuddy/
+.workbuddy-ai/
+.vite/
+.gitignore.bak-*
+deploy/backup/

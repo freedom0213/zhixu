@@ -6,6 +6,7 @@ import com.zhixu.learning.domain.dto.LearningPlanDTO;
 import com.zhixu.learning.domain.po.LearningLesson;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.zhixu.learning.domain.vo.LearningLessonVO;
+import com.zhixu.learning.domain.vo.CourseStudentVO;
 import com.zhixu.learning.domain.vo.LearningPlanPageVO;
 
 import javax.validation.Valid;
@@ -40,6 +41,12 @@ public interface ILearningLessonService extends IService<LearningLesson> {
     void createLearningPlans(@Valid LearningPlanDTO planDTO,Integer freq);
 
     LearningPlanPageVO queryMyPlans(PageQuery pageQuery);
+
+    /**
+     * 查询某门课的报名学生明细（讲师视角，P24 学生分析页）。
+     * 只允许该课的讲师（主讲或协作）调用。
+     */
+    List<CourseStudentVO> queryCourseStudents(Long courseId);
 
 
 }

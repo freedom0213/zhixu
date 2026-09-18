@@ -3,13 +3,35 @@
 
 html, body {
     color: var(--color-font1);
-    background-color: var(--color-background1);
-    font-family: -apple-system, BlinkMacSystemFont;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
     font-size: 16px;
     margin: 0;
     padding: 0;
     min-width: 1220px;
-  }
+}
+
+// L0 背景层：整站底衬 —— 极淡浅蓝灰纵向渐变 + 两处极克制的柔光晕
+// 刻意写在 html 上而不是做一个 position:fixed 的独立层：体量最轻，且完全避开层级陷阱
+// （若用 fixed + z-index:-1，body 自身的底色在绘制顺序上会盖住它 —— 负 z-index 子元素
+//   绘制于"建立层叠上下文的元素之背景"之上，却仍在"body 背景"之下）
+html {
+    background-color: var(--color-background1);
+    background-image:
+        radial-gradient(closest-side, var(--page-glow-a), rgba(255, 255, 255, 0)),
+        radial-gradient(closest-side, var(--page-glow-b), rgba(255, 255, 255, 0)),
+        linear-gradient(180deg, var(--page-bg-from) 0%, var(--page-bg-to) 100%);
+    background-position: 4% -10%, 98% -2%, 0 0;
+    background-size: 980px 660px, 820px 580px, 100% 100%;
+    background-repeat: no-repeat, no-repeat, no-repeat;
+    background-attachment: fixed, fixed, fixed;
+}
+
+// body 必须透明：html 有了背景图后不再向 canvas 传播 body 的底色，
+// 若 body 仍留底色就会把背景层整个盖住
+body {
+    background-color: transparent;
+    min-height: 100vh;
+}
 ul,
 dl,
 li,
@@ -94,7 +116,7 @@ a{
   font-size: 16px;
   background: var(--color-main);
   color: var(--color-white);
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   text-align: center;
   cursor: pointer;
   &:hover{
@@ -395,4 +417,41 @@ border-radius: 8px;
   height: 24px;
   border-radius: 24px;
   margin-right: 10px;
+}
+
+// 轻卡片基类 —— 全站统一"白底 + 发丝线 + 柔和悬浮阴影"的卡片视觉语言
+// L2 内容层：用 inset 发丝线替代原来的 1px 实边框。
+// 好处：① 边界远比实边框柔和，消除"传统后台系统"的硬框感；
+//       ② inset 阴影不参与布局计算，去掉边框也不会造成任何像素位移（全局 box-sizing: border-box）
+// 各页面可在保持这套语言的前提下，按自身内容密度做局部调整（首页强调悬浮、密集页面适当收敛）
+.soft-card{
+  background: var(--color-white);
+  border: none;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card), var(--hairline);
+  transition: box-shadow .24s ease, transform .24s ease;
+}
+
+// L1 玻璃层基类 —— 只给「浮在内容之上」的元素使用（导航栏 / 悬浮控件 / 强调容器 / 抽屉）
+// 内容密集的卡片一律不用，保证文字可读性与滚动帧率（每个 backdrop-filter 都是一次离屏合成）
+.glass{
+  background: var(--glass-bg-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.90), inset 0 0 0 1px var(--card-line);
+  -webkit-backdrop-filter: saturate(160%) blur(var(--glass-blur));
+  backdrop-filter: saturate(160%) blur(var(--glass-blur));
+}
+
+// 实色兜底：不支持 backdrop-filter 的环境下，半透明底会让背后内容透出来、文字读不清
+@supports not ((backdrop-filter: blur(4px)) or (-webkit-backdrop-filter: blur(4px))) {
+  .glass{
+    background: rgba(255, 255, 255, 0.94);
+  }
+}
+
+// 尊重系统「减少动效」偏好
+@media (prefers-reduced-motion: reduce) {
+  .soft-card{
+    transition: none;
+  }
 }

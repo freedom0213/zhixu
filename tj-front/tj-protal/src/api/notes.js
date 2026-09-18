@@ -9,6 +9,13 @@ export const addNotes = params =>
 		data:params,
 	})
 // 全部笔记
+// 我的笔记总数（P28 首页统计）：/notes/page 必须带课程/小节，用它统计会 400
+export const countMyNotes = () =>
+	request({
+		url: `${LEARNING_API_PREFIX}/notes/my-count`,
+		method: 'get',
+	})
+
 export const getAllNotes = params =>
 	request({
 		url: `${LEARNING_API_PREFIX}/notes/page`,

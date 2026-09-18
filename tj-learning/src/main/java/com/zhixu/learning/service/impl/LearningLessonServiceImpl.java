@@ -4,19 +4,23 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.zhixu.api.client.course.CatalogueClient;
 import com.zhixu.api.client.course.CourseClient;
+import com.zhixu.api.client.user.UserClient;
 import com.zhixu.api.dto.IdAndNumDTO;
 import com.zhixu.api.dto.course.CataSimpleInfoDTO;
 import com.zhixu.api.dto.course.CourseFullInfoDTO;
 import com.zhixu.api.dto.course.CourseSimpleInfoDTO;
+import com.zhixu.api.dto.user.UserDTO;
 import com.zhixu.common.domain.dto.PageDTO;
 import com.zhixu.common.domain.query.PageQuery;
 import com.zhixu.common.exceptions.BadRequestException;
+import com.zhixu.common.exceptions.ForbiddenException;
 import com.zhixu.common.utils.*;
 import com.zhixu.learning.domain.dto.LearningPlanDTO;
 import com.zhixu.learning.domain.enums.LessonStatus;
 import com.zhixu.learning.domain.enums.PlanStatus;
 import com.zhixu.learning.domain.po.LearningLesson;
 import com.zhixu.learning.domain.po.LearningRecord;
+import com.zhixu.learning.domain.vo.CourseStudentVO;
 import com.zhixu.learning.domain.vo.LearningLessonVO;
 import com.zhixu.learning.domain.vo.LearningPlanPageVO;
 import com.zhixu.learning.domain.vo.LearningPlanVO;
@@ -36,6 +40,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -56,6 +61,8 @@ import java.util.stream.Collectors;
 public class LearningLessonServiceImpl extends ServiceImpl<LearningLessonMapper, LearningLesson> implements ILearningLessonService {
 
     private final CourseClient courseClient;
+
+    private final UserClient userClient;
 
     private final CatalogueClient catalogueClient;
 
@@ -371,6 +378,57 @@ public class LearningLessonServiceImpl extends ServiceImpl<LearningLessonMapper,
         }
         return result.pageInfo(p.getTotal(), p.getPages(), voList);
     }
+    @Override
+    public List<CourseStudentVO> queryCourseStudents(Long courseId) {
+        Long uid = UserContext.getUser();
+        // 1.归属校验：只有这门课的讲师（主讲或协作）能看本课学生数据（P24 与 P19 鉴权口径一致）
+        CourseFullInfoDTO course = courseClient.getCourseInfoById(courseId, false, true);
+        if (course == null) {
+            throw new BadRequestException("课程不存在");
+        }
+        List<Long> teacherIds = course.getTeacherIds();
+        if (teacherIds == null || !teacherIds.contains(uid)) {
+            throw new ForbiddenException("只能查看自己课程的学生");
+        }
+        // 2.本课报名学生明细
+        List<LearningLesson> lessons = lambdaQuery()
+                .eq(LearningLesson::getCourseId, courseId)
+                .orderByDesc(LearningLesson::getCreateTime)
+                .list();
+        if (lessons.isEmpty()) {
+            return new ArrayList<>();
+        }
+        // 3.批量补学生昵称与账号（一次查完，不在循环里单查）
+        List<Long> userIds = lessons.stream().map(LearningLesson::getUserId).collect(Collectors.toList());
+        Map<Long, UserDTO> userMap = new HashMap<>();
+        List<UserDTO> users = userClient.queryUserByIds(userIds);
+        if (users != null) {
+            for (UserDTO u : users) {
+                if (u != null && u.getId() != null) {
+                    userMap.put(u.getId(), u);
+                }
+            }
+        }
+        // 4.组装：服务端有的才给（学习时长表里没有 → 不给，前端显示「—」）
+        List<CourseStudentVO> list = new ArrayList<>(lessons.size());
+        for (LearningLesson lesson : lessons) {
+            CourseStudentVO vo = new CourseStudentVO();
+            vo.setUserId(lesson.getUserId());
+            vo.setJoinTime(lesson.getCreateTime());
+            vo.setLearnedSections(lesson.getLearnedSections());
+            vo.setLatestLearnTime(lesson.getLatestLearnTime());
+            vo.setStatus(lesson.getStatus());
+            UserDTO u = userMap.get(lesson.getUserId());
+            if (u != null) {
+                vo.setName(u.getName());
+                vo.setCellPhone(u.getCellPhone());
+                vo.setIcon(u.getIcon());
+            }
+            list.add(vo);
+        }
+        return list;
+    }
+
     private Map<Long, CourseSimpleInfoDTO> queryCourseSimpleInfoList(List<LearningLesson> records) {
         // 3.1.获取课程id
         Set<Long> cIds = records.stream().map(LearningLesson::getCourseId).collect(Collectors.toSet());

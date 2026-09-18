@@ -1,6 +1,8 @@
 package com.zhixu.media.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import java.io.IOException;
+import java.time.LocalDateTime;
 import com.baomidou.mybatisplus.core.metadata.OrderItem;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -11,6 +13,8 @@ import com.zhixu.api.dto.course.MediaQuoteDTO;
 import com.zhixu.api.dto.course.SectionInfoDTO;
 import com.zhixu.api.dto.user.UserDTO;
 import com.zhixu.common.domain.dto.PageDTO;
+import org.springframework.web.multipart.MultipartFile;
+import com.zhixu.common.exceptions.BadRequestException;
 import com.zhixu.common.exceptions.ForbiddenException;
 import com.zhixu.common.utils.*;
 import com.zhixu.media.constants.FileErrorInfo;
@@ -19,6 +23,7 @@ import com.zhixu.media.domain.dto.MediaUploadResultDTO;
 import com.zhixu.media.domain.po.Media;
 import com.zhixu.media.domain.query.MediaQuery;
 import com.zhixu.media.domain.vo.MediaVO;
+import com.zhixu.media.storage.MediaUploadResult;
 import com.zhixu.media.domain.vo.VideoPlayVO;
 import com.zhixu.media.enums.FileStatus;
 import com.zhixu.media.mapper.MediaMapper;
@@ -32,6 +37,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.zhixu.media.constants.FileErrorInfo.MEDIA_NOT_EXISTS;
+import static com.zhixu.media.constants.FileErrorInfo.MEDIA_NOT_UPLOADED;
 
 /**
  * <p>
@@ -68,8 +74,17 @@ public class MediaServiceImpl extends ServiceImpl<MediaMapper, Media> implements
 
         if(lessonId != null){
             // 2.1.是，查询媒资信息，直接获取签名
+            // 先区分「没传视频」（正常状态）和「媒资记录丢了」（数据异常），别混成一句话
+            AssertUtils.isNotNull(sectionInfo.getMediaId(), MEDIA_NOT_UPLOADED);
             Media media = getById(sectionInfo.getMediaId());
             AssertUtils.isNotNull(media, MEDIA_NOT_EXISTS);
+            // 0）本地直链模式（P23）：mediaUrl 非空 → 不取签名，直接给播放地址
+            if (media.getMediaUrl() != null && !media.getMediaUrl().isBlank()) {
+                VideoPlayVO vo = new VideoPlayVO();
+                vo.setFileId(media.getFileId());
+                vo.setMediaUrl(media.getMediaUrl());
+                return vo;
+            }
             // 1）获取签名
             String signature =  mediaStorage.getPlaySignature(media.getFileId(), UserContext.getUser(), null);
             // 2）返回
@@ -78,16 +93,26 @@ public class MediaServiceImpl extends ServiceImpl<MediaMapper, Media> implements
             vo.setFileId(media.getFileId());
             return vo;
         }
-        // 2.2.否，判断课程章节是否免费
+        // 2.2.否，判断能不能播
+        // P25：「试看」是**付费课**的营销手段 —— 免费课程本就对所有登录用户开放，
+        //      以前这里只看 trailer，导致免费课里 trailer=0 的小节报「课程不支持试看」。
         Boolean trailer = sectionInfo.getTrailer();
-        if(BooleanUtils.isFalse(trailer)) {
-            // 2.3.不免费，抛出异常
+        if(BooleanUtils.isFalse(sectionInfo.getFree()) && BooleanUtils.isFalse(trailer)) {
+            // 2.3.付费课且未开放试看，抛出异常
             throw new ForbiddenException(FileErrorInfo.MEDIA_NOT_FREE);
         }
 
         // 3.免费，获取课程信息
+        AssertUtils.isNotNull(sectionInfo.getMediaId(), MEDIA_NOT_UPLOADED);
         Media media = getById(sectionInfo.getMediaId());
         AssertUtils.isNotNull(media, MEDIA_NOT_EXISTS);
+        // 0）本地直链模式（P23）：试看暂不截断，全段可播（本地 demo 语义）
+        if (media.getMediaUrl() != null && !media.getMediaUrl().isBlank()) {
+            VideoPlayVO vo = new VideoPlayVO();
+            vo.setFileId(media.getFileId());
+            vo.setMediaUrl(media.getMediaUrl());
+            return vo;
+        }
         // 4.获取签名
         String signature =  mediaStorage.getPlaySignature(
                 media.getFileId(), UserContext.getUser(), sectionInfo.getFreeDuration());
@@ -160,6 +185,72 @@ public class MediaServiceImpl extends ServiceImpl<MediaMapper, Media> implements
             list.add(v);
         }
         return new PageDTO<>(mediaPage.getTotal(), mediaPage.getPages(), list);
+    }
+
+    @Override
+    public MediaDTO uploadLocalVideo(MultipartFile file, Float durationSec) {
+        if (file == null || file.isEmpty()) {
+            throw new BadRequestException("请选择要上传的视频文件");
+        }
+        String name = file.getOriginalFilename();
+        String ext = (name != null && name.lastIndexOf('.') >= 0)
+                ? name.substring(name.lastIndexOf('.')).toLowerCase() : ".mp4";
+        if (!".mp4".equals(ext) && !".webm".equals(ext) && !".mov".equals(ext) && !".m4v".equals(ext)) {
+            throw new BadRequestException("只支持 mp4 / webm / mov 格式的视频");
+        }
+        MediaUploadResult result;
+        try {
+            result = mediaStorage.uploadFile(name, file.getInputStream(), file.getSize());
+        } catch (IOException e) {
+            throw new BadRequestException("读取上传文件失败，请重试");
+        }
+        // 登记媒资：fileId = 本地 key，mediaUrl = 播放直链（P23 播放靠它短路）
+        Media media = new Media();
+        media.setId(com.baomidou.mybatisplus.core.toolkit.IdWorker.getId());
+        media.setFileId(result.getFileId());
+        media.setFilename(name);
+        media.setMediaUrl(result.getMediaUrl());
+        media.setDuration(durationSec == null ? 0f : durationSec);
+        media.setSize(file.getSize());
+        media.setStatus(FileStatus.UPLOADED);
+        media.setCreateTime(LocalDateTime.now());
+        media.setUpdateTime(LocalDateTime.now());
+        media.setCreater(UserContext.getUser());
+        media.setUpdater(UserContext.getUser());
+        media.setDeleted(0);
+        save(media);
+        return BeanUtils.toBean(media, MediaDTO.class);
+    }
+
+    @Override
+    public com.zhixu.api.dto.media.MediaMetaDTO findMetaById(Long id) {
+        Media media = id == null ? null : getById(id);
+        if (media == null) {
+            return null;
+        }
+        com.zhixu.api.dto.media.MediaMetaDTO meta = new com.zhixu.api.dto.media.MediaMetaDTO();
+        meta.setId(media.getId());
+        meta.setDuration(media.getDuration());
+        return meta;
+    }
+
+    @Override
+    public com.zhixu.api.dto.media.MediaMetaDTO findLatestByFilename(String filename) {
+        if (filename == null || filename.isBlank()) {
+            return null;
+        }
+        Media media = lambdaQuery()
+                .eq(Media::getFilename, filename)
+                .orderByDesc(Media::getId)
+                .last("LIMIT 1")
+                .one();
+        if (media == null) {
+            return null;
+        }
+        com.zhixu.api.dto.media.MediaMetaDTO meta = new com.zhixu.api.dto.media.MediaMetaDTO();
+        meta.setId(media.getId());
+        meta.setDuration(media.getDuration());
+        return meta;
     }
 
     @Override

@@ -19,6 +19,9 @@ import java.util.Optional;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+// P23：这是「轮询腾讯云 VOD 转码事件」的任务，只在 TENCENT 平台模式装配 ——
+// 本地模式没有 VodClient bean，不排除会导致整个服务起不来。
+@org.springframework.boot.autoconfigure.condition.ConditionalOnBean(com.tencentcloudapi.vod.v20180717.VodClient.class)
 public class PullEventTask {
 
     private static final String PROCEDURE_EVENT = "ProcedureStateChanged";

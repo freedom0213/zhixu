@@ -61,6 +61,26 @@ public class Question implements Serializable {
     private Integer difficulty;
 
     /**
+     * 状态，1：可用，0：已停用（停用不删除，见契约 §4.3）
+     */
+    private Integer status;
+    /**
+     * 可见范围：0 私有（仅作者可见）/ 1 公开（平台可见）。
+     * P17：老师可以把自己出的题**公开发布到平台** —— 引用式共享（只改这个字段，不复制内容），
+     * 否则公共库里会出现两份近似重复的题。撤回时若已被试卷引用会被拒绝。
+     */
+    private Integer visibility;
+    /**
+     * 公开发布到平台的时间（撤回时清空）。前端用它把「新公开」的题排在前面。
+     */
+    private LocalDateTime publishTime;
+
+    /**
+     * 所属课程id（course 库；教师端题目归属课程，契约 §4 的 8 字段之一）
+     */
+    private Long courseId;
+
+    /**
      * 回答正确次数
      */
     private Integer correctTimes;

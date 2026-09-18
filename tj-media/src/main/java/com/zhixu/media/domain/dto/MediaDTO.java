@@ -18,4 +18,7 @@ public class MediaDTO {
 
     @ApiModelProperty(value = "视频大小，单位字节", example = "1024")
     private Long size;
+
+    @ApiModelProperty(value = "播放地址（LOCAL 模式 = /ms/media-stream/{key}）")
+    private String mediaUrl;
 }

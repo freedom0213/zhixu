@@ -95,6 +95,9 @@ services:
       args:
         JAR_FILE: tj-media/target/tj-media.jar
     ports: ["8084:8084"]
+    # P23 · 本地媒资存储：视频落在命名卷里，容器重建不丢
+    volumes:
+      - media-data:/data/media
 
   message-service:
     <<: *java-service
@@ -225,3 +228,6 @@ services:
       args:
         JAR_FILE: tj-gateway/target/tj-gateway.jar
     ports: ["10010:10010"]
+
+volumes:
+  media-data:
