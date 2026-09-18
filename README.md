@@ -90,6 +90,9 @@
 
 叠加工程化设计：多用户数据隔离（文件 / 向量块 / 会话 / 聊天记录按 userId 隔离）、同名文件判重、失败降级（向量库不可用时回退关键词检索，rerank 失败时回退原排序）、学习工具走全量资料上下文（非 RAG 路径）。
 
+> ⚠️ **演示用的课程资料（知识库内容）不随仓库发布** —— 全新 clone 下来资料库是空的：
+> 需要在「AI 助教 → 知识库」里**自行上传 Markdown 文档**，之后才能看到检索与引用来源标注。
+
 ---
 
 ## 技术栈
@@ -188,6 +191,7 @@ tj-trade/ tj-promotion/   订单、购物车、优惠券
 tj-pay/                   支付（本地为配置占位，未接入真实商户）
 tj-ai/                    文档问答（RAG）、会话、知识库
 tj-front/tj-protal/       Vue 3 前端（学员端 + 讲师端同 SPA）
+data/                     本地数据（AI 知识库内容等，**不随仓库发布**）
 docs/screenshots/demo/    README 演示截图
 assets/readme/            README 架构图
 ```
@@ -248,6 +252,7 @@ assets/readme/            README 架构图
   - 其中 `pay-service` 因为启动即需要微信支付私钥（缺失则 `PemUtil` NPE），在未配置证书时容器会处于重启状态 —— 它不影响其它功能，建议 `docker compose stop pay-service` 让它安静停着。
 - **AI 能力依赖外部 Key**：`DEEPSEEK_API_KEY` 缺省时对话不可用；`TJ_AI_EMBEDDING_MODEL` 留空时关闭向量检索、退化为本地关键词召回；`TJ_AI_RERANK_MODEL` 留空时关闭重排。填齐后自动启用完整 RAG 链路。
 - **AI 回答的边界**：知识库未命中时允许模型基于通用知识做补充回答（这是与产品方确认过的定位，不是缺陷）；检索质量评估集（hit rate）与会话持久化仍在计划中。
+- **知识库资料不自带**：演示用的课程 Markdown 资料（`data/course-knowledge/`、`data/platform-knowledge/`）未纳入仓库，需自行上传；`data/ai/`（上传的文档与向量索引）同样为本地数据。
 - 定位为**本地演示版**：单实例部署，无分布式向量库、无鉴权审计 —— 这些是生产化差异，不是功能缺失。
 
 ---

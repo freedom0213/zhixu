@@ -67,6 +67,16 @@ tj-front/tj-protal/src/config/style.js
 tj-front/tj-protal/src/style/font_style/iconfont.js
 
 # =============================================================================
+# 演示用知识库内容（2026-09-18）
+# 说明：data/course-knowledge/ 与 data/platform-knowledge/ 是**喂给 AI 助教的知识库资料**
+# （课程 Markdown 正文、批量上传清单与构建脚本、课程目录对齐用的 SQL），
+# 属于演示内容而非项目源码 → 不随仓库发布，文件保留在本地。
+# ⚠️ 影响：全新 clone 下来 AI 助教**没有可用资料**，需自行上传 Markdown。
+# =============================================================================
+/data/course-knowledge/
+/data/platform-knowledge/
+
+# =============================================================================
 # 开发过程复盘文档（2026-09-18）
 # 说明：根目录的 p*.md 是**逐轮开发的过程记录**（需求 → 根因 → 修复 → 验证），
 # 属于本机开发资料，**不随仓库发布**。文件仍保留在本地。
@@ -83,7 +93,6 @@ tj-front/tj-protal/src/style/font_style/iconfont.js
 #   .workbuddy-ai/      本地 AI 工具链数据
 #   .vite/              Vite 依赖预构建缓存
 #   deploy/backup/      数据库备份 SQL
-#   data/course-knowledge 与 data/platform-knowledge 是**演示用知识库内容**，需要随仓库走，故不忽略。
 # =============================================================================
 .workbuddy/
 .workbuddy-ai/
