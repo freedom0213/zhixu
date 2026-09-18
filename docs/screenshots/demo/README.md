@@ -21,7 +21,7 @@
 | `teacher-marking.png` | 主观题批改（打分 + 评语） | 1920×911 |
 | `teacher-chat.png` | 师生对话（WebSocket 私信） | 1920×911 |
 
-> ℹ️ 倒计时与考试时间窗口强制已于 P38 上线，`student-exam.png` 右上角就是剩余时间（见 `p38-exam-countdown-gap.md`）。
+> ℹ️ `student-exam.png` 右上角就是剩余时间（倒计时与考试时间窗口强制已上线）。
 
 ---
 
