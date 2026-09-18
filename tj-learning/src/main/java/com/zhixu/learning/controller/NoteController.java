@@ -61,6 +61,12 @@ public class NoteController {
         noteService.removeMyNote(id);
     }
 
+    @ApiOperation("我的笔记总数（首页统计用）")
+    @GetMapping("/my-count")
+    public Integer countMyNotes() {
+        return noteService.countMyNotes();
+    }
+
     @ApiOperation("用户端分页查询笔记")
     @GetMapping("/page")
     public PageDTO<NoteVO> queryNotePage(@Valid NotePageQuery query) {

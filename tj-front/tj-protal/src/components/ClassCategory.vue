@@ -3,7 +3,7 @@
     <div class="classCategory ft-14" :class="{ classCategoryHeader: type == 'float'}">
       <div @mouseout="mouseoutHandle()">
         <div class="items">
-          <div class="item" v-for="item in data" :key="item.id" @mouseover="mouseoverHandle(item.children)" >
+          <div class="item" v-for="item in data" :key="item.id" @mouseover="mouseoverHandle(item)" >
             <!-- 一级分类 -->
             <div class="fx-sb">
               <div @click="() => $router.push({path:'/search', query:{type:'categoryIdLv1',id:item.id}})" class="font-bt2" >{{item.name}}</div>
@@ -15,16 +15,16 @@
               <span v-if="item.children.length > 1"> / </span>
               <span @click="() => $router.push({path:'/search', query:{type:'categoryIdLv2',id:item.children[1].id}})" v-if="item.children.length > 1" class="font-bt2 ft-cl-des">{{  item.children[1].name}}</span>
             </div>
-          </div>
-        </div>
-        
-        <!-- 展示详情 -->
-        <div class="allCategory" v-show="isDetails" @mouseover="mouseoverHandle()">
-          <div class="cont">
-            <div class="fx ft-wt-600 pd-bt-10" v-for="item in categorys" :key="item.id">
-              <span class="tit font-bt2" @click="() => $router.push({path:'/search', query:{type:'categoryIdLv2',id:item.id}})">{{item.name}} :</span> 
-              <div class="name fx-1">
-                <span class="ft-wt-400 cur-pt font-bt2" @click="() => $router.push({path:'/search', query:{type:'categoryIdLv3',id:it.id}})" v-for="it in item.children" :key="it.id">{{it.name}}</span>
+            <!-- 二级/三级详情面板：渲染在各一级项内部，position:absolute 相对该项定位，
+                 left:100% 使面板左边缘紧贴一级项右边缘，鼠标水平右移即可进入，无 hover 空隙 -->
+            <div class="allCategory" v-show="activeId === item.id">
+              <div class="cont">
+                <div class="fx ft-wt-600 pd-bt-10" v-for="cate in item.children" :key="cate.id">
+                  <span class="tit font-bt2" @click="() => $router.push({path:'/search', query:{type:'categoryIdLv2',id:cate.id}})">{{cate.name}} :</span>
+                  <div class="name fx-1">
+                    <span class="ft-wt-400 cur-pt font-bt2" @click="() => $router.push({path:'/search', query:{type:'categoryIdLv3',id:it.id}})" v-for="it in cate.children" :key="it.id">{{it.name}}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -34,7 +34,8 @@
 </template>
 <script setup>
 import {ref} from 'vue';
-  const isDetails = ref(false);
+  // 当前悬停的一级分类 id（null = 全部收起）
+  const activeId = ref(null);
   // 接收的全部分类
   const props = defineProps({
     data: {
@@ -46,17 +47,14 @@ import {ref} from 'vue';
       default: ''
     }
   })
-  // 详情的二级分类展示数据
-  const categorys = ref();
 
-  // 鼠标滑过修改当前二级分类数据
+  // 鼠标滑过一级分类：记录当前项，面板随之在该项右侧展开
   const mouseoverHandle = (item) => {
-    item ? categorys.value = item : null
-    isDetails.value = true
+    activeId.value = item ? item.id : null
   }
 
   const mouseoutHandle = () => {
-    isDetails.value = false
+    activeId.value = null
   }
   
 </script>
@@ -64,10 +62,11 @@ import {ref} from 'vue';
 .classCategory, .classCategoryHeader{
   position: relative;
   .items{
-    height: 388px;
-    overflow: hidden;
+    // 自适应高度：随一级分类数量增长（原固定 312px 只容纳 4 项）
+    min-height: 312px;
   }
   .item{
+    position: relative; /* 作为二级面板的定位锚点 */
     padding:15px;
     height: 78px;
     border-bottom: solid 1px #eeeeee;
@@ -78,30 +77,41 @@ import {ref} from 'vue';
     .desc{
       padding-top: 8px;
     }
+    /* 靠下方的一级项（倒数 2 个）：面板改为底部对齐，避免向下溢出视口 */
+    &:nth-last-child(-n + 2) .allCategory{
+      top: auto;
+      bottom: 0;
+    }
     &:hover{
       background-color: var(--color-background2);
     }
     &:first-child{
       border-radius: 8px 8px 0 0;
     }
-    &:nth-child(5){
+    &:nth-child(4){
+      border-radius: 0;
+    }
+    &:last-child{
       border-radius: 0 0 8px 8px;
+      border-bottom: none;
     }
   }
   .allCategory{
     position: absolute;
+    /* 相对被悬停的一级项定位：左边缘紧贴该项右边缘（left:100%），顶部对齐该项顶部，
+       鼠标水平右移即可进入面板，不存在 hover 空隙 */
+    z-index: 10; /* 面板必须盖过后续兄弟 .item（均为 relative 定位参与堆叠） */
     top: 0;
-    left: 236px;
+    left: 100%;
     width: 537px;
-    overflow: hidden;
-    height: 388px;
+    overflow-y: auto;
+    max-height: 390px;
     padding: 20px 30px 20px 20px;
     background: #FFFFFF;
-    box-shadow: 0 4px 6px 2px rgba(108,112,118,0.17);
-    border-radius: 8px;
+    box-shadow: var(--shadow-card-hover);
+    border-radius: var(--radius-md);
     .cont{
-      height: 360px;
-      // overflow-y: scroll;
+      // 随分类内容自适应，超出由外层滚动
     }
     .tit{
       display: inline-block;
@@ -124,7 +134,7 @@ import {ref} from 'vue';
 }
 .classCategoryHeader{
   .items{
-    min-height: 388px;
+    min-height: 312px;
     width: 236px;
     overflow: inherit;
     box-shadow: 0 4px 6px 2px rgba(108,112,118,0.17);

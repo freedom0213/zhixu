@@ -42,6 +42,17 @@ public class QuestionPageVO {
     @ApiModelProperty("更新人")
     private String updater;
 
+    @ApiModelProperty("出题人（契约 §4：共享池子里要能找到题的主人）")
+    private String creatorName;
+
+    @ApiModelProperty("状态，1：可用，0：已停用")
+    private Integer status;
+    @ApiModelProperty("可见范围：0 私有（仅我）/ 1 公开（平台可见）")
+    private Integer visibility;
+
+    @ApiModelProperty("所属课程id")
+    private Long courseId;
+
     @ApiModelProperty("更新时间")
     private LocalDateTime updateTime;
 }

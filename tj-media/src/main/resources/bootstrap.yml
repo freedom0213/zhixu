@@ -36,8 +36,12 @@ tj:
   auth:
     resource:
       enable: true
+      # P23：改用**白名单拦截模式**（include）——exclude 模式实测未生效（signature/play 在
+      # exclude 里仍被拦）。只拦媒资管理接口；/media-stream/** 不在列表 → <video> 免登录播放。
+      includeLoginPaths:
+        - /medias/**
       excludeLoginPaths:
-        - /medias/signature/play
+        - /media-stream/**
   jdbc:
     database: tj_media
   platform:

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" width="640" height="360">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1e40af"/>
+      <stop offset="1" stop-color="#eab308"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="360" fill="url(#bg)"/>
+  <circle cx="580" cy="-30" r="180" fill="#ffffff" opacity="0.06"/>
+  <circle cx="500" cy="400" r="140" fill="#ffffff" opacity="0.05"/>
+  <g id="deco-py" fill="#ffffff" opacity="0.16"><rect x="490" y="60" width="44" height="110" rx="22"/><rect x="510" y="120" width="44" height="110" rx="22" opacity="0.6"/></g>
+  <rect x="40" y="88" width="168" height="36" rx="18" fill="#fef08a" opacity="0.92"/>
+  <text x="124.0" y="112" font-size="19" fill="#eab308" text-anchor="middle"
+        font-weight="600" font-family="'PingFang SC','Microsoft YaHei',sans-serif">Python</text>
+  <text x="44" y="200" font-size="34" font-weight="700" fill="#ffffff" font-family="'PingFang SC','Microsoft YaHei',sans-serif">Python 自动化脚</text><text x="44" y="246" font-size="34" font-weight="700" fill="#ffffff" font-family="'PingFang SC','Microsoft YaHei',sans-serif">本实战</text>
+  <text x="40" y="332" font-size="18" fill="#ffffff" opacity="0.75"
+        font-family="'PingFang SC','Microsoft YaHei',sans-serif">知序学堂 · 精品课程</text>
+</svg>

@@ -25,6 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 
 /**
  * <p>
@@ -98,8 +100,28 @@ public class UserInboxServiceImpl extends ServiceImpl<UserInboxMapper, UserInbox
     }
 
     private void saveNoticeListToInbox(List<PublicNotice> notices, Long userId) {
+        if (CollUtils.isEmpty(notices)) {
+            return;
+        }
+        // 🔴 P35：这里原先**无条件批量插入** —— 每次打开公告页都会把同一批公告再插一份，
+        //    收件箱很快积出大量重复行（实测一个用户 3 条公告积成了 31 条）。
+        //    重复行会让"标记已读"看起来失灵：点掉一份，其它副本仍是未读。
+        //    去重键 = (push_time, title)：公告的推送时间 + 标题足以唯一标识一条公告
+        //    （表里没有存 notice_id，加列需要迁移，这里先按业务键去重）。
+        Set<String> existing = new HashSet<>();
+        List<UserInbox> owned = lambdaQuery()
+                .eq(UserInbox::getUserId, userId)
+                .select(UserInbox::getPushTime, UserInbox::getTitle)
+                .list();
+        for (UserInbox row : owned) {
+            existing.add(noticeKey(row.getPushTime(), row.getTitle()));
+        }
         List<UserInbox> list = new ArrayList<>(notices.size());
         for (PublicNotice notice : notices) {
+            String key = noticeKey(notice.getPushTime(), notice.getTitle());
+            if (!existing.add(key)) {
+                continue; // 本次这批里已有，或收件箱里已存在 → 跳过，不重复插
+            }
             UserInbox box = new UserInbox();
             box.setTitle(notice.getTitle());
             box.setContent(notice.getContent());
@@ -109,7 +131,14 @@ public class UserInboxServiceImpl extends ServiceImpl<UserInboxMapper, UserInbox
             box.setExpireTime(notice.getExpireTime());
             list.add(box);
         }
-        saveBatch(list);
+        if (!list.isEmpty()) {
+            saveBatch(list);
+        }
+    }
+
+    /** 收件箱里标识一条公告的业务键（表里没有 notice_id，用推送时间 + 标题） */
+    private String noticeKey(java.time.LocalDateTime pushTime, String title) {
+        return (pushTime == null ? "" : pushTime.toString()) + '|' + (title == null ? "" : title);
     }
 
     @Override

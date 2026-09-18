@@ -13,6 +13,7 @@ import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -42,6 +43,15 @@ public class MediaController {
     @PostMapping
     public MediaDTO saveMedia(@RequestBody MediaUploadResultDTO result) {
         return mediaService.save(result);
+    }
+
+    @ApiOperation("本地上传视频（LOCAL 平台模式）：服务端存盘 + 登记媒资，返回 mediaId 与播放直链")
+    @PostMapping("/upload")
+    public MediaDTO uploadVideo(
+            @ApiParam(value = "视频文件", required = true) @RequestParam("file") MultipartFile file,
+            @ApiParam(value = "时长（秒），前端读视频元数据后传入", example = "325.5")
+            @RequestParam(value = "durationSec", required = false) Float durationSec) {
+        return mediaService.uploadLocalVideo(file, durationSec);
     }
 
     @ApiOperation("获取上传视频的授权签名")

@@ -12,10 +12,12 @@ import com.zhixu.common.exceptions.BizIllegalException;
 import com.zhixu.common.utils.*;
 import com.zhixu.course.constants.CourseConstants;
 import com.zhixu.course.constants.CourseErrorInfo;
+import com.zhixu.course.domain.po.Course;
 import com.zhixu.course.domain.po.CourseCatalogue;
 import com.zhixu.course.domain.vo.CataSimpleInfoVO;
 import com.zhixu.course.domain.vo.CataVO;
 import com.zhixu.course.mapper.CourseCatalogueMapper;
+import com.zhixu.course.mapper.CourseMapper;
 import com.zhixu.course.properties.CourseProperties;
 import com.zhixu.course.service.ICourseCatalogueService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +39,9 @@ public class CourseCatalogueServiceImpl extends ServiceImpl<CourseCatalogueMappe
 
     @Autowired
     private CourseProperties courseProperties;
+
+    @Autowired
+    private CourseMapper courseMapper;
 
     @Autowired
     private ExamClient examClient;
@@ -128,8 +133,13 @@ public class CourseCatalogueServiceImpl extends ServiceImpl<CourseCatalogueMappe
         //4.组装数据
         SectionInfoDTO sectionInfoDTO = BeanUtils.toBean(courseCatalogue, SectionInfoDTO.class);
         //5.设置免费试看时长
-        sectionInfoDTO.setFreeDuration(courseCatalogue.getTrailer() == 1 ?
-                courseProperties.getMedia().getTrailerDuration() : 0);
+        // P23：course.media 未配置时这里曾 NPE（该链路此前从未跑通过）→ 判空兜底
+        Integer trailerDuration = (courseProperties.getMedia() == null) ? 0
+                : courseProperties.getMedia().getTrailerDuration();
+        sectionInfoDTO.setFreeDuration(courseCatalogue.getTrailer() == 1 ? trailerDuration : 0);
+        // P25：把「课程是否免费」一并带出去 —— 播放时免费课对所有人开放、不看 trailer
+        Course course = courseMapper.selectById(courseCatalogue.getCourseId());
+        sectionInfoDTO.setFree(course != null && course.getFree() != null && course.getFree() == 1);
         return sectionInfoDTO;
     }
 

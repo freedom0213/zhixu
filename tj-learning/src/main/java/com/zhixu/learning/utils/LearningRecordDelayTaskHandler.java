@@ -152,7 +152,9 @@ public class LearningRecordDelayTaskHandler {
         public RecordCacheData(LearningRecord record) {
             this.id = record.getId();
             this.moment = record.getMoment();
-            this.finished = false;
+            // 🔴 P25：原来硬编码 false —— 缓存命中的旧记录永远被当成「未完成」，
+            //    同一小节会被反复判定为「新学完」，课表 learned_sections 重复累加。
+            this.finished = record.getFinished() != null && record.getFinished();
         }
     }
 

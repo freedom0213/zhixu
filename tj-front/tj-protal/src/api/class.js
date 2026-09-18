@@ -6,11 +6,22 @@ const MEDIA_API_PREFIX = "/ms"
 const PROMOTION_API_PREFIX = "/prs"
 const EXAM_API_PREFIX = "/es"
 // 课程分类
+// admin=true：返回全部分类（含暂无课程的新分类）；默认门户模式只返回挂有已上架课程的分类
 export const getClassCategorys = (params) =>
 	request({
 		url: `${COURSE_API_PREFIX}/categorys/all`,
 		method: 'get',
-		params
+		params: { admin: true, ...params }
+	})
+
+// 按三级分类 id 列表查询课程（tj-course 直查数据库，返回课程 id/名称/价格/免费标记等）
+// 注意：后端 CourseController 类级映射为 @RequestMapping("courses")，网关再加 /cs 前缀，
+// 完整路径是 /cs/courses/simpleInfo/list（曾漏掉 courses 段导致 404）。
+export const getCourseSimpleInfoList = (thirdCataIds) =>
+	request({
+		url: `${COURSE_API_PREFIX}/courses/simpleInfo/list`,
+		method: 'get',
+		params: { thirdCataIds: thirdCataIds.join(',') }
 	})
 
 // 获取课程推荐接口
@@ -266,6 +277,15 @@ export const getSignRecords = () =>
 request({
 	url: `${LEARNING_API_PREFIX}/sign-records`,
 	method: 'get',
+})
+
+// 学习时长汇总（P27）：学习足迹热力图 + 「累计/日均学习」的唯一数据源
+// 返回 { totalSec, todaySec, windowSec, activeDays, avgDailySec, days:[{learnDate,durationSec}] }
+export const getLearningDurations = (days = 140) =>
+request({
+	url: `${LEARNING_API_PREFIX}/learning-durations/summary`,
+	method: 'get',
+	params: { days }
 })
 // 获取签到记录
 export const getTodayPoints = () =>

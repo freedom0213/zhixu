@@ -2,6 +2,59 @@ import request from "@/utils/request.js"
 // 我的消息页面接口
 const MESSAGE_API_PREFIX = "/sms"
 
+// =============================================================================
+// 师生对话 · WebSocket（P22）
+// -----------------------------------------------------------------------------
+// 握手身份用**一次性票据**：浏览器 new WebSocket() 带不了自定义请求头，
+// token 塞查询参数又会被网关日志/代理记录 —— 所以先带 token 调 `/sms/ws-ticket`
+// 换一张 30 秒一次性票据，再 `new WebSocket("/sms/ws?ticket=…")`。
+// 票据用后即焚、过期作废，拿不到 101 就是票据无效。
+// =============================================================================
+const getChatTicket = () =>
+    request({ url: `${MESSAGE_API_PREFIX}/ws-ticket`, method: 'get' })
+
+/**
+ * 打开聊天 WebSocket（异步：要先换票据）。
+ * @param onChat 收到别人发来的私信：{ type:'chat', conversationId, otherUserId, otherUsername, otherAvatar, message }
+ * @returns Promise<WebSocket|null>；未登录/换票失败返回 null
+ */
+export const openChatSocket = async (onChat) => {
+    if (!sessionStorage.getItem('token')) return null;
+    let ticket;
+    try {
+        const res = await getChatTicket();
+        ticket = res?.data ?? res;
+    } catch (e) {
+        return null; // 换票失败 → 页面仍可用 REST 收发，只是没有实时推送
+    }
+    if (!ticket) return null;
+    const base = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:10010').replace(/^http/, 'ws');
+    let ws;
+    try {
+        ws = new WebSocket(`${base}/sms/ws?ticket=${encodeURIComponent(ticket)}`);
+    } catch (e) {
+        return null;
+    }
+    ws.onmessage = (e) => {
+        try {
+            const payload = JSON.parse(e.data);
+            if (payload && payload.type === 'chat') onChat && onChat(payload);
+        } catch (err) { /* 非 JSON 忽略（心跳等） */ }
+    };
+    return ws;
+};
+
+/**
+ * 按账号解析任意用户（发起会话用，P22）。
+ * 注意区别：`/us/users/lookup` 只认教师（协作讲师场景）；聊天对象可以是学生也可以是讲师。
+ */
+export const lookupChatUser = (keyword) =>
+    request({
+        url: '/us/users/chat-lookup',
+        method: 'get',
+        params: { keyword },
+    })
+
 // 获取未读消息
 export const getNotRead = () =>
     request({
@@ -28,14 +81,14 @@ export const queryUserInbox = (params) =>
 export const markMessageAsRead = (id) =>
     request({
         url: `${MESSAGE_API_PREFIX}/inboxes/mark/${id}`,
-        method: 'post',
+        method: 'put',
     })	
 
 // 标记全部通知已读
 export const markAllMessageAsRead = () =>
     request({
         url: `${MESSAGE_API_PREFIX}/inboxes/markAll`,
-        method: 'post',
+        method: 'put',
     })	
 
 // 分页查询会话列表

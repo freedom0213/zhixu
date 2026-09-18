@@ -35,8 +35,9 @@
 // 数据导入
 import { reactive, ref } from "vue";
 import { useRoute, useRouter } from 'vue-router'
-import { userLogins, getUserInfo } from "@/api/user"
+import { userLogins, userLoginsStaff, getUserInfo } from "@/api/user"
 import { useUserStore } from '@/store'
+import { redirectAfterLogin } from '@/config/loginRedirect'
 import { ElMessage } from "element-plus";
 
 const emit = defineEmits(['goHandle'])
@@ -61,39 +62,41 @@ const rules = reactive({
     { required: true, message: "请输入正确的密码", trigger: "blur"},
   ],
 });
-// 登录
+// 登录：学生通道优先；后端按身份拒绝（「非学生端用户」）时自动改走管理端通道；
+// 成功后按「身份 + 来源」跳转 —— 学员回学员端、教师进工作台（同一个登录页，按身份分流）
 const submitForm = (formEl) => {
   if (!formEl) return;
   formEl.validate(async (valid) => {
     if (valid) {
-      // 提交登录
-      await userLogins(fromData)
-			.then(async res => {
-				if (res.code === 200) {
-          // 用户token写入 pinia
-					store.setToken(res.data);
-					// 获取用户信息
-          const data = await getUserInfo()
-          if (data.code === 200) {
-              // 记录到store 并调转到首页
-              store.setUserInfo(data.data)
-					    // 跳转到首页
-              router.push('/main/index')
-          }
-				} else {
-          ElMessage({
-              message: res.msg,
-              type: 'error'
-          });
-					console.log('登录失败')
-				}
-			})
-			.catch(err => {
+      try {
+        let staffChannel = false;
+        let res = await userLogins({ ...fromData });
+        if (res.code !== 200 && String(res.msg || '').includes('非学生端')) {
+          // 学生通道按身份拒绝 → 走管理端通道（教师/管理员）；通道本身就是身份依据
+          staffChannel = true;
+          res = await userLoginsStaff({ ...fromData });
+        }
+        if (res.code !== 200) {
+          ElMessage({ message: res.msg || '登录失败', type: 'error' });
+          return;
+        }
+        // 用户token写入 pinia
+        store.setToken(res.data);
+        // 获取用户信息
+        const data = await getUserInfo();
+        if (data.code === 200) {
+          // 记录到store 并按身份跳转（从某端进来则回该端）
+          store.setUserInfo(data.data);
+          router.push(redirectAfterLogin(data.data, staffChannel));
+        } else {
+          ElMessage({ message: data.msg || '获取用户信息失败', type: 'error' });
+        }
+      } catch (err) {
         ElMessage({
-          message: err,
+          message: typeof err === 'string' ? err : '登录出错，请重新尝试',
           type: 'error'
         });
-      });
+      }
     } else {
       ElMessage({
           message: '登录出错，请重新尝试',

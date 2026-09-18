@@ -73,7 +73,7 @@ public class CourseErrorInfo {
         public static final String COURSE_SUBJECT_SAVE_SUBJECT_IDS_NULL = "阶段测试为空，请设置阶段测试题目";
         public static final String COURSE_SUBJECT_SAVE_CATALOGUE_ID_NULL = "题目未指定练习id";
         public static final String COURSE_TEACHER_SAVE_COURSE_ID_NULL = "课程id不能为空";
-        public static final String COURSE_TEACHER_SAVE_TEACHERS_NULL = "请至少设置一名教师";
+        public static final String COURSE_TEACHER_SAVE_TEACHERS_NULL = "请至少设置一名讲师";
 //        public static final String COURSE_TEACHER_SAVE_TEACHERS_NUM_MAX = "最多可设置5名课程老师";
         public static final String COURSE_TEACHER_SAVE_TEACHERS_NUM_MAX = "必须设置老师1-到5人";
         public static final String COURSE_TEACHER_SAVE_TEACHER_SHOW = "老师用户端显示不能为空";

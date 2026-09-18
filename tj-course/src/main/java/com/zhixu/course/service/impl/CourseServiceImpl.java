@@ -253,6 +253,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         vo.setName(course.getName());
         vo.setSections(course.getSectionNum());
         vo.setCoverUrl(course.getCoverUrl());
+        vo.setFree(course.getFree());
         // 4.查询教师信息
         List<UserDTO> teachers = userClient.queryUserByIds(course.getTeacherIds());
         if (CollUtils.isNotEmpty(teachers)) {

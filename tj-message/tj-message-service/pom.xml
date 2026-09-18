@@ -48,6 +48,12 @@
             <groupId>com.github.xiaoymin</groupId>
             <artifactId>knife4j-spring-boot-starter</artifactId>
         </dependency>
+        <!--auth-sdk：解析网关透传的 user-info 头到 UserContext-->
+        <dependency>
+            <groupId>com.zhixu</groupId>
+            <artifactId>tj-auth-resource-sdk</artifactId>
+            <version>1.0.0</version>
+        </dependency>
         <!--api-->
         <dependency>
             <groupId>com.zhixu</groupId>
@@ -63,6 +69,16 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+        <!-- Feign 按服务名路由必需：没有它 @FeignClient("user-service") 会退化成 DNS 解析（连 :80 失败） -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+        </dependency>
+        <!-- 师生对话的 WebSocket（P22） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
         </dependency>
         <!--caffeine-->
         <dependency>

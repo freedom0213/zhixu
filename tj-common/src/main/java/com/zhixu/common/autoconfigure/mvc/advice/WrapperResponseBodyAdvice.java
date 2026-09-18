@@ -28,6 +28,11 @@ public class WrapperResponseBodyAdvice implements ResponseBodyAdvice<Object> {
         if (request.getURI().getPath().equals("/v2/api-docs")){
             return body;
         }
+        // P23：视频流（Resource）绝不包装 —— 包装后 ResourceRegionHttpMessageConverter
+        // 处理 Range 分段时会 ClassCastException，流直接 404
+        if (body instanceof org.springframework.core.io.Resource) {
+            return body;
+        }
         if (body == null) {
             return R.ok().requestId(MDC.get(Constant.REQUEST_ID_HEADER));
         }

@@ -24,7 +24,7 @@ public class UserDTO {
     @EnumValid(enumeration = {1,2,3}, message = "用户类型错误")
     @NotNull
     private Integer type;
-    @ApiModelProperty(value = "角色id，老师和学生不用填", example = "5")
+    @ApiModelProperty(value = "角色id，讲师和学生不用填", example = "5")
     private Long roleId;
     @ApiModelProperty(value = "头像", example = "default-user-icon.jpg")
     private String icon;

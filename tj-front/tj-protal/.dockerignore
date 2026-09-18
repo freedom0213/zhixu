@@ -1,0 +1,15 @@
+# 构建上下文裁剪：node_modules 有 400MB+，整个 COPY 进镜像会让 BuildKit 超过
+# 负载上限直接报 "failed to receive status: rpc error ... EOF"（2026-09-11 实测）。
+# 容器内本来就跑 npm ci 自己装依赖、vite build 自己产出 dist，本地这两样都不需要进镜像。
+node_modules
+dist
+.vite
+
+# 版本控制与本地杂项
+.git
+.gitignore
+*.log
+npm-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db

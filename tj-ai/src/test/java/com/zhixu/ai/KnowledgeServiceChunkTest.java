@@ -50,8 +50,11 @@ class KnowledgeServiceChunkTest {
         assertTrue(svc.list(null).isEmpty());
 
         // 提问 + 不调模型也能返回兜底
-        String ans = svc.chat(null, 42L, "ArrayList 扩容机制");
-        assertNotNull(ans);
-        assertTrue(ans.contains("ArrayList"), "兜底答案应包含检索片段: " + ans);
+        // 注：原 svc.chat(...) 已随 GET /file/chat 接口移除，此处改用等价的 chatWithSources
+        //（多返回 sources/assistantType，正文同样在 content 字段）。
+        Map<String, Object> ans = svc.chatWithSources(null, 42L, null, null, "ArrayList 扩容机制");
+        String content = String.valueOf(ans.get("content"));
+        assertNotNull(content);
+        assertTrue(content.contains("ArrayList"), "兜底答案应包含检索片段: " + content);
     }
 }

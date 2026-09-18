@@ -36,4 +36,7 @@ public interface INoteService extends IService<Note> {
     void hiddenNote(Long id, boolean hidden);
 
     void removeMyNote(Long id);
+
+    /** 我的笔记总数（P28 首页统计）—— `/notes/page` 必须带课程/小节，不能拿它做总数统计 */
+    Integer countMyNotes();
 }

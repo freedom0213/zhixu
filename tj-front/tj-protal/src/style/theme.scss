@@ -1,32 +1,99 @@
 :root {
 
     // 主题色板
-    --color-main: #2080F7;
-    --color-hover: #519FFF;
-    --color-active: #1C55CF;
+    --color-main: #3B82F6;
+    --color-hover: #60A5FA;
+    --color-active: #2563EB;
+    --color-secondary: #14B8A6;
+    --color-secondary-light: #E6F7F4;
+    --color-main-light: #EFF6FF;
     --color-success: #27BA9B;
     --color-warning: #E19A30;
     --color-error: #FF4C4C;
     --color-error1: #FF7474;
     --color-error2: #EA3F3F;
     --color-error3: #FFE3E3;
-    --color-background1: #EEF0F4;
+    --color-background1: #F5F7FA;
     --color-background2: #E3E5E9;
     --color-background3: #E1E6F0;
     --color-background4: #C9CDD7;
     --color-background5: #F6F7FA;
     --color-background6:#CDD3E0;
-    --color-font1: #19232B;
+    --color-font1: #252B33;
     --color-font2: #7C7C8A;
     --color-font3: #80878C;
     --color-font4: #D9D9D9;
     --color-font5: #EEEEEE;
     --color-font6: #FFFFFF;
     --color-font7: #D2DBE7;
+    --color-border: #F0F1F3;
     --color-black: #000000;
     --color-white: #FFFFFF;
 
     // 黑色 视频播放页面
     --color-ft1:#A0A9B2;
-    --color-ft2:#7A838A
+    --color-ft2:#7A838A;
+
+    // 圆角体系
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+
+    // 阴影体系（轻）—— 双层结构：近距离贴边 + 远距离扩散。
+    // 单层阴影看起来像"描边"，双层才产生"轻微悬浮"的层次感（本次 UI 升级的核心手段之一）
+    --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.035), 0 6px 16px -6px rgba(16, 24, 40, 0.10);
+    --shadow-card-hover: 0 2px 4px rgba(16, 24, 40, 0.05), 0 14px 30px -8px rgba(16, 24, 40, 0.16);
+    --shadow-float: 0 6px 20px -6px rgba(16, 24, 40, 0.14), 0 20px 44px -16px rgba(16, 24, 40, 0.18);
+
+    // 间距体系
+    --spacing-xs: 8px;
+    --spacing-sm: 16px;
+    --spacing-md: 24px;
+    --spacing-lg: 32px;
+    --spacing-xl: 48px;
+
+    // AI 对话场景专用（私人助手 / 全局助手 / 课程助教共用）
+    // 科技蓝取自项目已有 AI 助手配色，与主题蓝 --color-main 区分：AI 场景用更亮的蓝紫调
+    --ai-accent: #4D6BFE;
+    --ai-accent-hover: #6A8BFF;
+    --ai-accent-soft: #EEF1FF;
+    --ai-accent-line: #DFE5FF;
+    // 对话流：AI 气泡为白卡片，用户气泡为主题蓝底白字
+    --ai-bubble-ai: #FFFFFF;
+    --ai-bubble-user: var(--color-main);
+    // 对话区底色比页面底色更浅一档，形成「对话画布」层次
+    --ai-canvas: #FBFCFE;
+
+    // ============ 页面层次体系：L0 背景 → L1 玻璃 → L2 内容 → L3 强调 ============
+    // 这套体系解决的是「层次不足」而非「颜色不足」：全站仍只用 1 个主色 + 1 个辅助色，
+    // 纵深完全由「背景色差 / 阴影 / 留白 / 圆角」建立，不靠增加颜色数量。
+
+    // L0 背景层：浅蓝灰渐变 + 两处柔光晕，避免整页平铺同一块底色。
+    // 底色刻意不再"接近纯白"：纯白底会让白色卡片与背景之间没有任何色差，
+    // 页面就只剩"白与白之间的细线"，视觉上一片扁平
+    --page-bg-from: #F2F6FD;
+    --page-bg-to: #E8EEF8;
+    // 全站底衬的柔光刻意保持克制（首页首屏另有一组更强的柔光，见 index.scss）
+    --page-glow-a: rgba(96, 140, 255, 0.13);
+    --page-glow-b: rgba(45, 190, 178, 0.09);
+
+    // L1 玻璃层：半透明白 + 背景模糊。只给「浮在内容之上」的元素用
+    // （导航栏 / 悬浮控件 / 强调容器 / 抽屉）。内容密集的卡片一律不用，
+    // 既保证文字可读性，也避免每个 backdrop-filter 都产生一次离屏合成开销
+    --glass-bg: rgba(255, 255, 255, 0.62);
+    --glass-bg-strong: rgba(255, 255, 255, 0.78);
+    --glass-line: rgba(255, 255, 255, 0.70);
+    --glass-blur: 18px;
+
+    // L2 内容层：卡片用「发丝线」替代 1px 硬边框。
+    // 发丝线用 inset 阴影实现 —— 不参与布局计算（不会产生像素位移），且远比实边框柔和，
+    // 是消除「传统后台系统硬边界感」的关键
+    --card-line: rgba(16, 24, 40, 0.055);
+    --card-line-hover: rgba(16, 24, 40, 0.10);
+    --hairline: inset 0 0 0 1px var(--card-line);
+    --hairline-hover: inset 0 0 0 1px var(--card-line-hover);
+
+    // 模块纵向留白（页面呼吸感）
+    --space-module: 56px;
+    --space-module-sm: 40px;
 }

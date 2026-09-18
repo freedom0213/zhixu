@@ -13,6 +13,7 @@ import com.zhixu.learning.domain.enums.LessonStatus;
 import com.zhixu.learning.domain.po.LearningLesson;
 import com.zhixu.learning.domain.po.LearningRecord;
 import com.zhixu.learning.domain.enums.SectionType;
+import com.zhixu.learning.mapper.LearningDurationMapper;
 import com.zhixu.learning.mapper.LearningRecordMapper;
 import com.zhixu.learning.service.ILearningLessonService;
 import com.zhixu.learning.service.ILearningRecordService;
@@ -21,6 +22,8 @@ import com.zhixu.learning.utils.LearningRecordDelayTaskHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -40,6 +43,8 @@ public class LearningRecordServiceImpl extends ServiceImpl<LearningRecordMapper,
     private final CourseClient courseClient;
 
     private final LearningRecordDelayTaskHandler    taskHandler;
+
+    private final LearningDurationMapper durationMapper;
     /**
      * 查询用户指定课程的学习进度
      * @param courseId  课程id
@@ -86,7 +91,9 @@ public class LearningRecordServiceImpl extends ServiceImpl<LearningRecordMapper,
             finished = handleExamRecord(userId,recordFormDTO);
         }
         if (!finished) {
-            // 没有新学完的小节，无需更新课表中的学习进度
+            // P25：这一节虽然还没学完，但学生**确实开始学了** —— 把课表从「未开始」推进到「学习中」。
+            // 否则只看了 30% 的学生，在讲师端「学生分析」里仍显示「未开始」，与事实不符。
+            markStarted(recordFormDTO.getLessonId());
             return;
         }
         // 3.处理课表数据
@@ -149,8 +156,16 @@ public class LearningRecordServiceImpl extends ServiceImpl<LearningRecordMapper,
             return false;
         }
         // 4.存在，则更新
+        // 4.0 P27：先把「本次真实观看时长」累加到当天（**在判完成之前** —— 没看完也要计时长）
+        accumulateDuration(userId, recordDTO, old);
         // 4.1.判断是否是第一次完成 finish == false && 视频观看时常到达50% 此时finished变为true
-        boolean finished = !old.getFinished() && recordDTO.getMoment() * 2 >= recordDTO.getDuration();
+        // P25：看满 **70%** 记为该小节学完（用户定的口径，原为 50%）。
+        // 整数比较避免浮点误差；时长缺失或为 0 时不判完成 —— 否则任何进度都会「越算越完」。
+        Integer moment = recordDTO.getMoment();
+        Integer duration = recordDTO.getDuration();
+        boolean watchedEnough = moment != null && duration != null && duration > 0
+                && moment * 10 >= duration * 7;
+        boolean finished = !old.getFinished() && watchedEnough;
         if (!finished) {
             LearningRecord record = new LearningRecord();
             record.setLessonId(recordDTO.getLessonId());
@@ -198,6 +213,55 @@ public class LearningRecordServiceImpl extends ServiceImpl<LearningRecordMapper,
      * @param recordFormDTO 学习记录
      * @return 返回布尔值
      */
+    /** 单次上报最多认可的观看时长（秒）= 上报间隔 15 秒的 2 倍（允许漏报一次，同时压住拖进度条） */
+    private static final int MAX_DELTA_SEC = 30;
+
+    /**
+     * 把本次「净观看时长」累加到当天（P27）。
+     * <p>
+     * 口径 = **播放坐标的推进量**，单次最多 {MAX_DELTA_SEC} 秒：
+     *  · 正常观看 —— 每次上报坐标推进 ≈ 15 秒，如实计入；
+     *  · 拖进度条 —— 坐标一次跳几千秒，被上限截断（不按跳过量算）；
+     *  · 暂停/挂机 —— 坐标不动，计 0。
+     * 首次上报（没有旧记录）只建立基线，不计时长。
+     */
+    private void accumulateDuration(Long userId, LearningRecordFormDTO dto, LearningRecord old) {
+        // moment 基线取 `old`（可能来自 Redis 缓存）—— **缓存里的才是最新值**：
+        // 库里那份是延迟写库的产物，往往滞后一两次上报，拿它当基线会把同一段进度反复计入。
+        Integer lastMoment = old.getMoment();
+        Integer curMoment = dto.getMoment();
+        if (lastMoment == null || curMoment == null) {
+            return;
+        }
+        int delta = curMoment - lastMoment;
+        if (delta <= 0) {
+            return;   // 暂停 / 挂机时坐标不动，天然不计时长
+        }
+        // 单次上限 = 上报间隔（15 秒）的 2 倍：正常观看的增量就在 15 秒上下，
+        // 而拖进度条会让坐标一次跳几千秒 —— 截到上限，既不会少记也不会被刷。
+        delta = Math.min(delta, MAX_DELTA_SEC);
+        Long courseId = 0L;
+        if (dto.getLessonId() != null) {
+            LearningLesson lesson = lessonService.getById(dto.getLessonId());
+            if (lesson != null && lesson.getCourseId() != null) {
+                courseId = lesson.getCourseId();
+            }
+        }
+        durationMapper.accumulate(userId, courseId, LocalDate.now(), delta);
+    }
+
+    /** 有播放进度就把课表推进到「学习中」；只动「未开始」，不覆盖已学完 / 已过期 */
+    private void markStarted(Long lessonId) {
+        if (lessonId == null) {
+            return;
+        }
+        lessonService.lambdaUpdate()
+                .set(LearningLesson::getStatus, LessonStatus.LEARNING.getValue())
+                .eq(LearningLesson::getId, lessonId)
+                .eq(LearningLesson::getStatus, LessonStatus.NOT_BEGIN.getValue())
+                .update();
+    }
+
     private boolean handleExamRecord(Long userId, LearningRecordFormDTO recordFormDTO) {
         //1.转换PTO为PO
         LearningRecord record = BeanUtils.copyBean(recordFormDTO,LearningRecord.class);

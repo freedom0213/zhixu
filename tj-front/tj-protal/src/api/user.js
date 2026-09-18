@@ -43,11 +43,21 @@ export const phoneLogins = (data) => {
 		withCredentials: true
 	});
 }
-// 账号登录
+// 账号登录（学生通道：后端校验 type=2，非学生用户会被拒「非学生端用户」）
 export const userLogins = (data) => {
 	data.type = PW_LOGIN_TYPE;
 	return request({
 		url: `${AUTH_API_PREFIX}/accounts/login`,
+		method: "post",
+		data,
+		withCredentials: true
+	});
+}
+// 账号登录（管理端通道：教师/管理员等 type≠2 的用户走这里，isStaff=true）
+export const userLoginsStaff = (data) => {
+	data.type = PW_LOGIN_TYPE;
+	return request({
+		url: `${AUTH_API_PREFIX}/accounts/admin/login`,
 		method: "post",
 		data,
 		withCredentials: true

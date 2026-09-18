@@ -21,6 +21,9 @@ public class QuestionDetailVO {
     @ApiModelProperty("题目名称，题干")
     private String name;
 
+    @ApiModelProperty("所属课程id")
+    private Long courseId;
+
     @ApiModelProperty("题目类型，1：单选题，2：多选题，3：不定向选择题，4：判断题，5：主观题")
     private Integer type;
 
@@ -64,4 +67,7 @@ public class QuestionDetailVO {
 
     @ApiModelProperty("答案解析")
     private String analysis;
+
+    @ApiModelProperty("可见范围：0 仅我 / 1 公开到平台")
+    private Integer visibility;
 }

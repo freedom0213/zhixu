@@ -18,4 +18,6 @@ import java.util.List;
 public interface LearningRecordMapper extends BaseMapper<LearningRecord> {
 
     List<IdAndNumDTO> countLearnedSections(Long userId, LocalDateTime begin, LocalDateTime end);
+
+
 }

@@ -5,6 +5,7 @@ import com.zhixu.common.domain.dto.PageDTO;
 import com.zhixu.common.domain.query.PageQuery;
 import com.zhixu.common.utils.UserContext;
 import com.zhixu.learning.domain.dto.LearningPlanDTO;
+import com.zhixu.learning.domain.vo.CourseStudentVO;
 import com.zhixu.learning.domain.vo.LearningLessonVO;
 import com.zhixu.learning.domain.vo.LearningPlanPageVO;
 import com.zhixu.learning.service.ILearningLessonService;
@@ -14,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.util.List;
 
 /**
  * <p>
@@ -78,6 +80,12 @@ public class LearningLessonController {
     @ApiOperation("查询我的学习计划")
     public LearningPlanPageVO queryMyPlans(PageQuery pageQuery){
         return iLearningLessonService.queryMyPlans(pageQuery);
+    }
+
+    @GetMapping("/course-students")
+    @ApiOperation("查询我课程的学生明细（讲师视角，学生分析页）")
+    public List<CourseStudentVO> queryCourseStudents(@RequestParam("courseId") Long courseId) {
+        return iLearningLessonService.queryCourseStudents(courseId);
     }
 
 

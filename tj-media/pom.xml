@@ -28,6 +28,12 @@
             <artifactId>tj-auth-resource-sdk</artifactId>
             <version>1.0.0</version>
         </dependency>
+        <!-- ⚠️ 此模块原本漏引 lombok → 全模块 @Data 失效、从未编译通过（P23 修复） -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
         <!--web-->
         <dependency>
             <groupId>org.springframework.boot</groupId>

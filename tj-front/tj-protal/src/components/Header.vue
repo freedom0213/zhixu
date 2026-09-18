@@ -6,11 +6,11 @@
       </div>
       <!-- 头部分类-start -->
       <div v-if="route.path != '/main/index' && route.path != '/login'" class="courseClass font-bt2"
-           @mouseover="() => isShow = true" @mouseout="() => isShow = false">
+           @mouseover="showClass" @mouseout="hideClassLater">
         <i class="iconfont zhy-icon_fenlei_nor"></i> 分类
       </div>
       <div v-if="route.path != '/main/index' && route.path != '/login'" class="courseClassList" v-show="isShow"
-           @mouseover="() => isShow = true" @mouseout="() => isShow = false">
+           @mouseover="showClass" @mouseout="hideClassLater">
         <div class="firstItems">
           <ClassCategory :data="courseClass" type="float"></ClassCategory>
         </div>
@@ -46,6 +46,8 @@
           <span class="marg-lr-40 font-bt2" style="padding:27px 0"
                 @click="() => {$router.push('/personal/main/myClass')}" @mouseover="()=> learningShow = true"
                 @mouseout="() => learningShow = false">学习中心</span>
+          <span class="marg-lr-40 font-bt2" style="padding:27px 0"
+                @click="() => $router.push('/main/ai')">AI 助手</span>
           <div class="learningCont" v-show="learningShow && learnClassInfo && learnClassInfo.courseAmount"
                @mouseover="()=> learningShow = true" @mouseout="() => learningShow = false">
             <div class="count"><em>{{ learnClassInfo && learnClassInfo.courseAmount }}</em> 门课程</div>
@@ -69,7 +71,8 @@
         <div class="fx-al-ct" v-if="userInfo && userInfo.name">
           <img class="headIcon" :src="headerIcon" :onerror="onerrorImg" alt="">
           <div>{{ userInfo.name }}</div>
-          <!-- <div class="font-bt2 pd-lf-10" @click="() => $router.push('/login')"> 退出 </div> -->
+          <!-- 退出登录（P22-fix）：清登录态回登录页。原来这行是被注释掉的死代码 -->
+          <div class="font-bt2 pd-lf-10 cur-pt" @click="signOut">退出</div>
         </div>
         <div class="cur-pt" v-else>
           <span class="font-bt2" @click="() => $router.push({path: '/login', query: {md: 'register'}})">注册 </span><span>/</span>
@@ -170,6 +173,16 @@ const syncHeaderIcon = (info) => {
 };
 const courseClass = ref([]) // 分类数据
 const isShow = ref(false)  // 分类展示
+// 分类下拉：延迟关闭，避免鼠标从触发块移动到弹窗（跨越空隙）时菜单闪没
+let classHideTimer = null
+const showClass = () => {
+  if (classHideTimer) { clearTimeout(classHideTimer); classHideTimer = null }
+  isShow.value = true
+}
+const hideClassLater = () => {
+  if (classHideTimer) clearTimeout(classHideTimer)
+  classHideTimer = setTimeout(() => { isShow.value = false; classHideTimer = null }, 150)
+}
 const learnClassInfo = ref(null) // 我真正学习的课程信息-学习中心展示
 const learningShow = ref(false) // 学习中心hover模块展示
 const suggestions = ref([]); // 自动补全建议
@@ -329,6 +342,13 @@ const searchByHistory = (history) => {
   suggestions.value = [];
   dataCache.setSearchKey(input.value)
   router.push({path: '/search', query: {"key": input.value}})
+};
+
+/** 退出登录：清 token + userInfo → 回登录页 */
+const signOut = () => {
+  store.logout();
+  userInfo.value = null;
+  router.push('/login');
 };
 
 onBeforeMount(async () => {
@@ -506,8 +526,9 @@ header {
   width: 100%;
   background-color: var(--color-white);
   text-align: left;
-  padding: 11px 0;
+  padding: 10px 0;
   font-size: 14px;
+  border-bottom: 1px solid var(--color-border);
 
   .courseClass {
     position: relative;
@@ -527,6 +548,15 @@ header {
     z-index: 999;
     top: 50px;
     left: 102px;
+    // 透明桥：覆盖触发块与弹窗之间的空隙，防止 mouseout 闪烁关闭
+    &::before {
+      content: '';
+      position: absolute;
+      top: -14px;
+      left: 0;
+      right: 0;
+      height: 14px;
+    }
 
     .firstItems {
       background-color: #fff;
@@ -534,13 +564,16 @@ header {
   }
 
   .headerSearch {
-    width: 427px;
+    width: 400px;
     height: 40px;
-    background: #edf0f4;
-    border-radius: 8px;
+    background: var(--color-background5);
+    border: 1px solid var(--color-border);
+    border-radius: 20px;
 
     :deep(.el-input__wrapper) {
       background-color: transparent;
+      box-shadow: none !important;
+      padding-left: 16px;
     }
 
     .search {
@@ -569,11 +602,12 @@ header {
     z-index: 999;
     width: 330px;
     height: 200px;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     left: -40px;
     top: 45px;
     background-color: #fff;
-    box-shadow: 0 4px 6px 2px rgba(108, 112, 118, 0.17);
+    box-shadow: var(--shadow-float);
+    border: 1px solid var(--color-border);
 
     &::before {
       position: absolute;
@@ -586,7 +620,7 @@ header {
       height: 15px;
       background-color: #fff;
       transform: rotate(45deg);
-      box-shadow: 0 4px 6px 2px rgba(108, 112, 118, 0.17);
+      box-shadow: 4px 4px 6px 2px rgba(108, 112, 118, 0.12);
     }
 
     .count {
@@ -623,7 +657,7 @@ header {
         font-weight: 600;
         font-size: 14px;
         line-height: 28px;
-        color: #19232B;
+        color: var(--color-font1);
       }
 
       .perc {
@@ -647,10 +681,10 @@ header {
 .suggestion-list {
   position: absolute;
   z-index: 999;
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background-color: #fff;
-  box-shadow: 0 4px 6px 2px rgba(108, 112, 118, 0.17);
-  border: 1px solid #eee;
+  box-shadow: var(--shadow-float);
+  border: 1px solid var(--color-border);
   overflow: hidden; // 隐藏超出内容
 
   // 搜索历史容器样式
