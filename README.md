@@ -36,11 +36,13 @@
 | --- | --- |
 | ![学习页](./docs/screenshots/demo/student-learn.png) | ![AI 助教](./docs/screenshots/demo/student-ai.png) |
 
-| 在线答题（卷头限时 + 已作答计数） | 交卷后的成绩与逐题解析 |
+| 在线答题（**右上角倒计时** + 已作答计数） | 交卷后的成绩与逐题解析 |
 | --- | --- |
 | ![在线答题](./docs/screenshots/demo/student-exam.png) | ![成绩与解析](./docs/screenshots/demo/student-exam-result.png) |
 
 > 判分只读**作答时冻结的快照**：交卷时保存题目与答案，之后讲师改题也不会影响已交卷的成绩。
+> 倒计时以 `min(开始作答时间 + 时长, 考试结束时间)` 为截止，**由服务端下发**（前端只用它显示，不自己算），
+> 到点自动交卷；不在考试时间窗口内则无法进入 —— 这张图右上角就是在走的剩余时间。
 
 **公告与新闻**（未读 / 已读）
 

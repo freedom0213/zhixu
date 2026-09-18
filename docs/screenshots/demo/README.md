@@ -13,7 +13,7 @@
 | `student-detail.png` | 课程详情（介绍 / 目录 / 讲师） | 1920×911 |
 | `student-learn.png` | 学习页（视频 + 右侧目录，露出 5 个页签） | 1920×911 |
 | `student-ai.png` | 右栏 AI 助教（流式回答 + 引用来源标注） | **405×753** ⚠️ 局部裁切 |
-| `student-exam.png` | 在线答题页（卷头限时 + 已作答计数） | 1920×911 |
+| `student-exam.png` | 在线答题页（**右上角倒计时** + 已作答计数） | 1920×911 |
 | `student-exam-result.png` | 交卷后的成绩与逐题解析 | 1920×911 |
 | `student-notice.png` | 公告与新闻（未读 / 已读） | 1920×911 |
 | `teacher-dashboard.png` | 讲师工作台概览（左侧 10 项导航） | 1920×911 |
@@ -21,7 +21,7 @@
 | `teacher-marking.png` | 主观题批改（打分 + 评语） | 1920×911 |
 | `teacher-chat.png` | 师生对话（WebSocket 私信） | 1920×911 |
 
-> ℹ️ `student-exam.png` 里**没有倒计时是正常的** —— 倒计时功能两端都还没实现，见 `p38-exam-countdown-gap.md`。
+> ℹ️ 倒计时与考试时间窗口强制已于 P38 上线，`student-exam.png` 右上角就是剩余时间（见 `p38-exam-countdown-gap.md`）。
 
 ---
 
