@@ -274,11 +274,15 @@
       <div class="w-grid">
         <div class="w-field">
           <p class="w-label">开始时间 <span class="w-req">*</span></p>
-          <input v-model.trim="form.startAt" class="w-input" type="text" placeholder="2026-09-20 09:00" aria-label="开始时间" />
+          <input class="w-input" type="datetime-local" aria-label="开始时间"
+                 :value="toPickerValue(form.startAt)"
+                 @input="form.startAt = fromPickerValue($event.target.value)" />
         </div>
         <div class="w-field">
           <p class="w-label">结束时间 <span class="w-req">*</span></p>
-          <input v-model.trim="form.endAt" class="w-input" type="text" placeholder="2026-09-20 10:30" aria-label="结束时间" />
+          <input class="w-input" type="datetime-local" aria-label="结束时间"
+                 :value="toPickerValue(form.endAt)"
+                 @input="form.endAt = fromPickerValue($event.target.value)" />
         </div>
         <div class="w-field">
           <p class="w-label">允许作答次数</p>
@@ -416,6 +420,16 @@ const form = reactive({
   publishMode: 'now',
 });
 
+// -----------------------------------------------------------------------------
+// 时间选择（P37）
+// -----------------------------------------------------------------------------
+// 开始/结束时间原来是**纯文本输入框**，必须手打 "2026-09-20 09:00"，格式写错后端直接报错。
+// 改用浏览器原生 datetime-local：点右侧日历图标即可选日期与时分，零新依赖、风格与 .w-input 一致。
+// ⚠️ 原生控件要求的值格式是 "YYYY-MM-DDTHH:mm"（带 T），而表单与接口用的是 "YYYY-MM-DD HH:mm"，
+//    因此只在「进出控件」这一层做格式搬运，form.startAt / form.endAt 的数据形状完全不变。
+const toPickerValue = (v) => (v ? String(v).replace(' ', 'T').slice(0, 16) : '');
+const fromPickerValue = (v) => (v ? String(v).replace('T', ' ').slice(0, 16) : '');
+
 // P17：默认只看「关联课程」的题；两个开关用来**主动扩大范围**（关着的时候范围最小、最不容易选错）
 const pool = reactive({
   type: '',
@@ -463,8 +477,19 @@ const checks = computed(() => {
   const basicOk = !!(form.name && form.courseId && form.duration && form.passScore);
   list.push({ level: basicOk ? 'ok' : 'warn', text: basicOk ? '基本信息完整，及格线与时长已设置' : '基本信息还有未填项（名称 / 课程 / 及格线 / 时长）' });
 
+  // 时间窗口：**一条提示只说一件事** —— 未设置 / 顺序不对 / 已就绪。
+  // （别拆成「已设置 ✓」+「顺序不对 ⚠」两行，那会出现"通过"和"注意"互相打架的观感）
   const timeOk = !!(form.startAt && form.endAt);
-  list.push({ level: timeOk ? 'ok' : 'warn', text: timeOk ? `考试时间已设置（${form.startAt} 至 ${form.endAt}）` : '还没设置考试时间窗口' });
+  // 格式固定为 "YYYY-MM-DD HH:mm"（零填充），字符串比较等价于时间比较，不必建 Date 对象
+  const timeOrderOk = timeOk && form.endAt > form.startAt;
+  list.push({
+    level: timeOk && timeOrderOk ? 'ok' : 'warn',
+    text: !timeOk
+      ? '还没设置考试时间窗口'
+      : timeOrderOk
+        ? `考试时间已设置（${form.startAt} 至 ${form.endAt}）`
+        : `结束时间早于开始时间（${form.startAt} → ${form.endAt}），学生进不了考场`,
+  });
 
   list.push({
     level: selected.value.length ? 'ok' : 'warn',
@@ -483,7 +508,10 @@ const checks = computed(() => {
 });
 
 const canPublish = computed(
-  () => !!(form.name && form.courseId && form.startAt && form.endAt && selected.value.length)
+  () =>
+    !!(form.name && form.courseId && form.startAt && form.endAt && selected.value.length) &&
+    // 时间顺序不对就挡住发布：放出去也只是一场谁也进不去的考试
+    form.endAt > form.startAt
 );
 
 // ---- 题库池 ----
@@ -948,7 +976,8 @@ watch(examId, () => {
   }
 }
 
-.w-select {
+.w-select,
+.w-input[type='datetime-local'] {
   cursor: pointer;
 }
 
