@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.time.format.DateTimeFormatter;
 
 /**
  * 作答与判分实现（p14）
@@ -66,6 +67,9 @@ public class ExamAnswerServiceImpl implements IExamAnswerService {
     /** 卷子状态：3 = 已结束（随堂练习被停用也用它） */
     private static final int ST_FINISHED = 3;
 
+    /** 交卷宽限秒数（P38）：前端会在倒计时归零时自动交卷，这里留余量容忍网络与点击延迟 */
+    private static final int SUBMIT_GRACE_SECONDS = 120;
+
     private final ExamMapper examMapper;
     private final ExamRecordMapper examRecordMapper;
     private final ExamRecordDetailMapper examRecordDetailMapper;
@@ -88,6 +92,8 @@ public class ExamAnswerServiceImpl implements IExamAnswerService {
     public ExamStartVO start(Long examId) {
         Long uid = requireUser();
         Exam exam = requirePublished(examId);
+        // P38：进入前校验时间窗口 —— 窗口外一律不让进（原先没有任何校验，窗口形同虚设）
+        assertInWindow(exam);
         ExamRecord old = findRecord(examId, uid);
         if (old != null) {
             if (old.getStatus() != null && old.getStatus() >= ST_SUBMITTED) {
@@ -135,6 +141,13 @@ public class ExamAnswerServiceImpl implements IExamAnswerService {
         if (rec.getStatus() != null && rec.getStatus() >= ST_SUBMITTED) {
             // 幂等：重复交卷返回既有成绩，**不重新判分、不重复累加题库计数**
             return buildResult(exam, rec, null);
+        }
+
+        // P38：到点后不再接受交卷（宽限 SUBMIT_GRACE_SECONDS 秒）。
+        // 正常路径不会走到这里 —— 前端在倒计时归零时会自动交卷；这条是兜底，防止"把页面挂着无限作答"。
+        LocalDateTime deadline = deadlineOf(exam, rec);
+        if (deadline != null && LocalDateTime.now().isAfter(deadline.plusSeconds(SUBMIT_GRACE_SECONDS))) {
+            throw new BadRequestException("考试已于 " + fmtTime(deadline) + " 结束，本次作答未能提交");
         }
 
         List<ExamSnapshotItem> snap = snapshotOf(exam, rec);
@@ -241,7 +254,10 @@ public class ExamAnswerServiceImpl implements IExamAnswerService {
                     // 卷面总分从快照算（与作答页 / 成绩页同一口径）
                     .setTotalScore(snap.stream().mapToInt(x -> x.getScore() == null ? 0 : x.getScore()).sum())
                     .setDuration(e.getDuration())
-                    .setPassScore(e.getPassScore());
+                    .setPassScore(e.getPassScore())
+                    // P38：把窗口带给学生端，卡片就能标出「未开考 / 已结束」而不是让人点进去才吃报错
+                    .setStartAt(e.getStartAt())
+                    .setEndAt(e.getEndAt());
             ExamRecord r = mineMap.get(e.getId());
             if (r != null) {
                 vo.setMyRecordId(r.getId())
@@ -645,6 +661,48 @@ public class ExamAnswerServiceImpl implements IExamAnswerService {
         return vo;
     }
 
+    // ------------------------------------------------------------------ 时间窗口（P38）
+
+    /**
+     * 进入前校验时间窗口。
+     * ⚠️ 开始/结束时间为空表示**不限** —— 历史试卷与随堂练习都没有窗口，不能因此把学生挡在外面。
+     */
+    private void assertInWindow(Exam exam) {
+        LocalDateTime now = LocalDateTime.now();
+        if (exam.getStartAt() != null && now.isBefore(exam.getStartAt())) {
+            throw new BadRequestException("考试还没开始（" + fmtTime(exam.getStartAt()) + " 开考）");
+        }
+        if (exam.getEndAt() != null && now.isAfter(exam.getEndAt())) {
+            throw new BadRequestException("考试已于 " + fmtTime(exam.getEndAt()) + " 结束，不能再进入");
+        }
+    }
+
+    /**
+     * 本次作答的截止时间（服务端权威口径）：
+     * 取「开始作答时间 + 考试时长」与「考试统一结束时间」中**更早**的一个 ——
+     * 前者保证每人都有完整时长，后者保证统一收卷不被最后一个人拖住。
+     * 任一来源为空则只看另一个；两者都为空 = 不限时（返回 null）。
+     */
+    private LocalDateTime deadlineOf(Exam exam, ExamRecord rec) {
+        LocalDateTime byDuration = null;
+        if (rec != null && rec.getStartTime() != null && exam.getDuration() != null && exam.getDuration() > 0) {
+            byDuration = rec.getStartTime().plusMinutes(exam.getDuration());
+        }
+        LocalDateTime byWindow = exam.getEndAt();
+        if (byDuration == null) {
+            return byWindow;
+        }
+        if (byWindow == null) {
+            return byDuration;
+        }
+        return byDuration.isBefore(byWindow) ? byDuration : byWindow;
+    }
+
+    /** 报错文案里的时间（精确到分即可，秒对用户没意义） */
+    private String fmtTime(LocalDateTime t) {
+        return t == null ? "" : t.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+    }
+
     private ExamStartVO buildStart(Exam exam, ExamRecord rec) {
         List<ExamSnapshotItem> snap = snapshotOf(exam, rec);
         ExamStartVO vo = new ExamStartVO();
@@ -666,6 +724,10 @@ public class ExamAnswerServiceImpl implements IExamAnswerService {
             q.setScore(s.getScore());
             qs.add(q);
         }
+        // 截止时间与当前时间都由服务端给出（前端只负责显示，**不自己用 duration 算**，
+        // 否则客户端时钟不准或被人为改动就会失真，也无法作为强制口径）—— P38
+        vo.setDeadline(deadlineOf(exam, rec));
+        vo.setServerTime(LocalDateTime.now());
         vo.setQuestions(qs);
         return vo;
     }
