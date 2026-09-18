@@ -24,7 +24,7 @@
 
 ## 界面演示
 
-> 截图存放于 `docs/screenshots/demo/`（文件名与下表一致即可直接显示）。
+> 截图位于 `docs/screenshots/demo/`。截图清单与待补项见该目录的 `README.md`。
 
 ### 学员端
 
@@ -32,27 +32,22 @@
 | --- | --- |
 | ![学员端首页](./docs/screenshots/demo/student-home.png) | ![课程详情](./docs/screenshots/demo/student-detail.png) |
 
-| 学习页（视频 + 目录 / 问答 / 笔记 / 考试） | AI 助教（流式回答 + 引用来源） |
+| 学习页（视频 + 目录 / 问答 / 笔记 / AI助教 / 考试 五个页签） | 同上·右栏 —— AI 助教：流式回答 + **引用来源标注** |
 | --- | --- |
 | ![学习页](./docs/screenshots/demo/student-learn.png) | ![AI 助教](./docs/screenshots/demo/student-ai.png) |
 
-| 在线答题（答题卡 + 倒计时） | 成绩与解析 |
-| --- | --- |
-| ![在线答题](./docs/screenshots/demo/student-exam.png) | ![成绩与解析](./docs/screenshots/demo/student-exam-result.png) |
+**考试链路 · 交卷后的成绩与逐题解析**（判分只读作答时冻结的快照）
+
+![成绩与解析](./docs/screenshots/demo/student-exam-result.png)
 
 ### 讲师工作台
 
-| 工作概览（数据卡 + 图表） | 建课向导（4 步 + 上架结果） |
+| 工作概览（左侧 10 项导航 + 数据卡） | 题库管理（含「可见范围」：私有 / 公开到平台） |
 | --- | --- |
-| ![讲师工作台概览](./docs/screenshots/demo/teacher-dashboard.png) | ![建课向导](./docs/screenshots/demo/teacher-wizard.png) |
+| ![讲师工作台概览](./docs/screenshots/demo/teacher-dashboard.png) | ![题库管理](./docs/screenshots/demo/teacher-questions.png) |
 
-| 题库管理（公开 / 私有可见范围） | 新建考试（关联课程 → 组卷） |
-| --- | --- |
-| ![题库管理](./docs/screenshots/demo/teacher-questions.png) | ![新建考试](./docs/screenshots/demo/teacher-exam-new.png) |
-
-| 主观题批改 | 考试统计（正确率 / 逐题分布） |
-| --- | --- |
-| ![批改](./docs/screenshots/demo/teacher-marking.png) | ![考试统计](./docs/screenshots/demo/teacher-stats.png) |
+> 建课向导、新建考试 / 组卷、主观题批改、考试统计、师生对话等界面截图见
+> `docs/screenshots/demo/README.md` 的清单（可选补充，不影响阅读）。
 
 ---
 
