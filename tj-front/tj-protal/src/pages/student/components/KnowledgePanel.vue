@@ -1,6 +1,8 @@
 <!-- 私人助手 · 我的知识库抽屉
      由原 /main/ai/knowledge 独立页面并入对话页，避免「提问功能两处重复」。
-     职责：资料的上传 / 查看 / 编辑 / 删除；不含问答（问答统一走对话页输入框）。
+     职责：资料的上传 / 查看 / 删除；不含问答（问答统一走对话页输入框）。
+     ⚠️ 刻意**不提供「就地编辑」**：后端 `PUT /ct/file/update` 从未实现（调用必 405），
+        所以这里不给编辑入口 —— 要改内容请「删除后重新上传」。详见 p36/p37。
      原页面里「返回原文片段 + 匹配得分」的渲染分支已移除：后端 /ct/file/chat 返回的是
      {content:"<AI 回答>"} 对象而非片段数组，该分支 Array.isArray(res.data) 恒为 false，
      属永不触发的死代码；需要看原文用「查看」即可拿到整份文档。 -->
@@ -17,7 +19,7 @@
 
     <!-- 上传入口 -->
     <div class="kbToolbar">
-      <button class="kbUpload" @click="openModal(null)">
+      <button class="kbUpload" @click="openModal()">
         <span class="kbUploadIcon">＋</span> 上传资料
       </button>
     </div>
@@ -44,7 +46,6 @@
         </div>
         <div class="kbItemActions">
           <button class="kbAct" title="查看原文" @click.stop="viewFileContent(file.id)">查看</button>
-          <button class="kbAct" title="编辑内容" @click.stop="openModal(file.id)">编辑</button>
           <button class="kbAct isDanger" title="删除资料" @click.stop="confirmDelete(file.id)">删除</button>
         </div>
       </div>
@@ -86,32 +87,10 @@
       </template>
     </el-dialog>
 
-    <!-- 编辑资料 -->
-    <el-dialog v-model="isEditModalVisible" title="编辑资料" width="640px" @close="handleEditModalClose">
-      <div class="kbForm">
-        <div class="kbField">
-          <label class="kbLabel">文件内容</label>
-          <el-input v-model="editFormData.content" type="textarea" :rows="14"
-                    placeholder="请输入文件内容（Markdown 格式）" />
-        </div>
-        <div class="kbField">
-          <label class="kbLabel">切割等级</label>
-          <el-input-number v-model="editFormData.level" :min="1" :max="5" />
-        </div>
-        <div class="kbNote">编辑时请保持标题层级 <code>##</code> / <code>###</code>，非标准格式可能影响检索。</div>
-      </div>
-      <template #footer>
-        <div class="kbDialogFoot">
-          <el-button @click="isEditModalVisible = false">取消</el-button>
-          <el-button type="primary" @click="submitEditForm">保存</el-button>
-        </div>
-      </template>
-    </el-dialog>
-
     <!-- 查看原文 -->
     <el-dialog v-model="viewFileVisible" title="文件内容" width="760px" @close="handleViewFileClose">
       <div class="kbViewHead">
-        <el-button v-if="currentViewFileId" size="small" @click="openEditModal(currentViewFileId)">编辑此文件</el-button>
+        <span class="kbHelp">如需修改内容：请先删除该文件，再上传修改后的版本。</span>
       </div>
       <div class="kbViewBody">
         <VueMarkdown v-if="viewFileContentData" :source="viewFileContentData" />
@@ -140,7 +119,7 @@
 <script setup>
 import { ref, watch } from 'vue';
 import { ElMessage, ElDialog, ElButton, ElInput, ElInputNumber, ElUpload } from 'element-plus';
-import { uploadMarkdown, updateMarkdown, deleteMarkdown, queryMarkdownPage, getMarkdown } from '@/api/ai.js';
+import { uploadMarkdown, deleteMarkdown, queryMarkdownPage, getMarkdown } from '@/api/ai.js';
 import VueMarkdown from 'vue3-markdown-it';
 
 const props = defineProps({
@@ -206,9 +185,8 @@ const isAddModalVisible = ref(false);
 const addFormData = ref({ file: null, fileName: '', level: 2 });
 const addUploadRef = ref(null);
 
-const openModal = (id) => {
-  if (id) openEditModal(id);
-  else isAddModalVisible.value = true;
+const openModal = () => {
+  isAddModalVisible.value = true;
 };
 
 const handleAddModalClose = () => {
@@ -245,52 +223,6 @@ const submitAddForm = async () => {
     ElMessage.error(`上传失败：${error.message || '网络错误'}`);
   } finally {
     uploading.value = false;
-  }
-};
-
-// ==================== 编辑 ====================
-const isEditModalVisible = ref(false);
-const editFormData = ref({ content: '', level: 2 });
-const currentEditFileId = ref(null);
-
-const handleEditModalClose = () => {
-  editFormData.value = { content: '', level: 2 };
-};
-
-const openEditModal = async (id) => {
-  currentEditFileId.value = id;
-  try {
-    const fileData = await getMarkdown(id);
-    const hit = fileList.value.find((item) => item.id === id);
-    editFormData.value.content = fileData.data;
-    editFormData.value.level = hit ? hit.level : 2;
-    isEditModalVisible.value = true;
-  } catch (error) {
-    ElMessage.error('获取文件内容失败: ' + (error.message || '未知错误'));
-  }
-};
-
-const submitEditForm = async () => {
-  try {
-    const res = await updateMarkdown({
-      id: currentEditFileId.value,
-      content: editFormData.value.content,
-      level: editFormData.value.level
-    });
-    if (res.code === 200) {
-      ElMessage.success('保存成功');
-      isEditModalVisible.value = false;
-      await refresh();
-      // 编辑的正是当前查看的文件时，同步刷新原文
-      if (viewFileVisible.value && currentViewFileId.value === currentEditFileId.value) {
-        const fileData = await getMarkdown(currentEditFileId.value);
-        viewFileContentData.value = fileData.data;
-      }
-    } else {
-      ElMessage.error(`保存失败: ${res.msg || '未知错误'}`);
-    }
-  } catch (error) {
-    ElMessage.error(`保存失败: ${error.message || '网络错误'}`);
   }
 };
 
@@ -576,7 +508,9 @@ defineExpose({ refresh });
 }
 .kbDialogFoot { display: flex; justify-content: flex-end; gap: 10px; }
 
+// 原先这里放的是「编辑此文件」按钮（右对齐）；现在换成说明文字，用 margin-right:auto 推到左侧与正文对齐
 .kbViewHead { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+.kbViewHead .kbHelp { margin-right: auto; }
 .kbViewBody {
   max-height: 56vh;
   overflow-y: auto;
