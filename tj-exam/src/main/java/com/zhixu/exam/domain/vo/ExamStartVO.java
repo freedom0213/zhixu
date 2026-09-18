@@ -6,6 +6,7 @@ import lombok.Data;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.time.LocalDateTime;
 
 /**
  * 开始作答（p14）：返回这场卷子的题目。
@@ -31,6 +32,12 @@ public class ExamStartVO {
     private String notice;
     @ApiModelProperty("卷面总分")
     private Integer totalScore;
+
+    @ApiModelProperty("本次作答的截止时间（服务端权威口径；空 = 不限时）")
+    private LocalDateTime deadline;
+
+    @ApiModelProperty("服务端当前时间（前端据此校准倒计时，避免本机时钟不准导致漂移）")
+    private LocalDateTime serverTime;
     @ApiModelProperty("题目（无答案）")
     private List<Question> questions = new ArrayList<>();
 

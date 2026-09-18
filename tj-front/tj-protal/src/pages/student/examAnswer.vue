@@ -40,11 +40,21 @@
           </p>
           <p v-if="paper.notice" class="exa__notice">{{ paper.notice }}</p>
         </div>
-        <div class="exa__progress">
-          <strong>{{ answeredCount }}</strong>
-          <span>/ {{ paper.questions.length }} 已作答</span>
+        <div class="exa__headSide">
+          <!-- 倒计时（P38）：截止时间由服务端给，前端只负责显示 -->
+          <div v-if="remainText" class="exa__timer" :class="{ 'is-warn': timeWarn, 'is-over': timeOver }">
+            <strong>{{ remainText }}</strong>
+            <span>{{ timeOver ? '时间到' : '剩余时间' }}</span>
+          </div>
+          <div class="exa__progress">
+            <strong>{{ answeredCount }}</strong>
+            <span>/ {{ paper.questions.length }} 已作答</span>
+          </div>
         </div>
       </section>
+
+      <!-- 到点提示（P38）：不静默 —— 自动交卷失败也要让人看见并手动重试 -->
+      <section v-if="timeUpMsg" class="s-card exa__timeup">{{ timeUpMsg }}</section>
 
       <!-- 题目 -->
       <section v-for="(q, qi) in paper.questions" :key="q.id" class="s-card exa__q">
@@ -61,6 +71,7 @@
               :class="{ 'is-on': isPicked(q.id, oi + 1) }"
               type="button"
               :aria-pressed="isPicked(q.id, oi + 1)"
+              :disabled="timeOver"
               @click="pick(q, oi + 1)"
             >
               <span class="exa__optKey">{{ letter(oi) }}</span>
@@ -92,7 +103,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { startExam, submitExam } from '@/api/subject.js';
 
@@ -116,6 +127,7 @@ const isPicked = (qid, n) => (picked[qid] || []).includes(n);
 
 /** 单选：选一个（再点取消）；多选：切换 */
 const pick = (q, n) => {
+  if (timeOver.value) return;      // 到点后不再接受作答
   const cur = picked[q.id] || [];
   if (q.type === 2) {
     picked[q.id] = cur.includes(n) ? cur.filter((x) => x !== n) : [...cur, n].sort((a, b) => a - b);
@@ -148,6 +160,8 @@ const load = async () => {
       d.totalScore = (d.questions || []).reduce((sum, q) => sum + Number(q.score || 0), 0);
     }
     paper.value = d;
+    // 截止时间与服务端当前时间都来自接口（P38），前端不自己用 duration 推算
+    startClock(d && d.deadline, d && d.serverTime);
   } catch (e) {
     error.value = e?.message || '试卷加载失败';
     // 「考试只能考一次」是业务规则，不是系统故障 —— 引导去看答卷
@@ -163,7 +177,7 @@ const askSubmit = () => {
   confirming.value = true;
 };
 
-const doSubmit = async () => {
+const doSubmit = async (auto = false) => {
   if (submitting.value) return;
   submitting.value = true;
   try {
@@ -177,12 +191,81 @@ const doSubmit = async () => {
     // 交卷成功 → 去看答卷（那里有逐题对错与解析）
     router.replace({ path: '/student/exams/review', query: { id: examId.value } });
   } catch (e) {
-    error.value = e?.message || '交卷失败，请重试';
-    confirming.value = false;
+    if (auto) {
+      // 自动交卷失败**绝不能静默**：把原因留在页面上，并保留手动交卷按钮让人重试
+      timeUpMsg.value = `时间到，自动交卷没能提交（${e?.message || '网络错误'}）。请点下方「交卷」重试。`;
+      confirming.value = false;
+    } else {
+      error.value = e?.message || '交卷失败，请重试';
+      confirming.value = false;
+    }
   } finally {
     submitting.value = false;
   }
 };
+
+// =============================================================================
+// 倒计时（P38）
+// -----------------------------------------------------------------------------
+// 截止时间 `deadline` 由服务端给出（取「开始作答 + 时长」与「考试结束时间」更早者）。
+// 为什么不在前端用 `duration` 自己算：① 客户端时钟可能不准甚至被人为改，算出来会漂移；
+// ② 只在前端算就只是个"显示"，不构成约束 —— 真正的强制在后端（进入校验 + 交卷超时兜底）。
+// 下面用服务端返回的 `serverTime` 求一个偏移量，之后每个 tick 都带上它 → 本机时间不准也不影响。
+// =============================================================================
+const remainMs = ref(null);
+const timeOver = ref(false);
+const timeUpMsg = ref('');
+let clockOffset = 0;
+let tickTimer = null;
+
+const remainText = computed(() => {
+  if (remainMs.value == null) return '';
+  const total = Math.max(0, Math.floor(remainMs.value / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const sec = total % 60;
+  const pad = (n) => String(n).padStart(2, '0');
+  return h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${pad(m)}:${pad(sec)}`;
+});
+/** 最后 5 分钟变色预警 */
+const timeWarn = computed(() => remainMs.value != null && remainMs.value > 0 && remainMs.value <= 5 * 60 * 1000);
+
+const stopClock = () => {
+  if (tickTimer) {
+    clearInterval(tickTimer);
+    tickTimer = null;
+  }
+};
+
+const startClock = (deadline, serverTime) => {
+  stopClock();
+  remainMs.value = null;
+  timeOver.value = false;
+  timeUpMsg.value = '';
+  if (!deadline) return;                 // 空 = 不限时，不显示倒计时
+  const toTs = (v) => new Date(String(v).replace(' ', 'T')).getTime();
+  const dl = toTs(deadline);
+  clockOffset = serverTime ? toTs(serverTime) - Date.now() : 0;
+  const tick = () => {
+    remainMs.value = dl - (Date.now() + clockOffset);
+    if (remainMs.value <= 0) {
+      remainMs.value = 0;
+      stopClock();
+      onTimeUp();
+    }
+  };
+  tick();
+  tickTimer = setInterval(tick, 1000);
+};
+
+/** 到点：先告诉用户，再自动交卷 */
+const onTimeUp = () => {
+  timeOver.value = true;
+  timeUpMsg.value = '时间到，正在自动交卷…';
+  doSubmit(true);
+};
+
+onUnmounted(stopClock);
 
 const goReview = () => router.replace({ path: '/student/exams/review', query: { id: examId.value } });
 
@@ -251,6 +334,44 @@ watch(
     line-height: 18px;
     color: #86868b;
   }
+  &__headSide {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+  }
+  &__timer {
+    text-align: right;
+
+    strong {
+      display: block;
+      font-size: 22px;
+      line-height: 26px;
+      font-weight: 600;
+      color: var(--sa, #0066cc);
+      font-variant-numeric: tabular-nums;   // 等宽数字：跳秒时不会左右抖
+    }
+    span {
+      font-size: 12px;
+      color: #6e6e73;
+    }
+
+    &.is-warn strong {
+      color: var(--s-warn, #ff9f0a);
+    }
+    &.is-over strong {
+      color: var(--s-danger, #ff3b30);
+    }
+  }
+  &__timeup {
+    margin-top: 12px;
+    padding: 12px 16px;
+    font-size: 13px;
+    line-height: 20px;
+    color: var(--s-danger, #ff3b30);
+    background: #fff5f5;
+  }
   &__progress {
     flex: 0 0 auto;
     text-align: right;
@@ -311,6 +432,10 @@ watch(
     display: flex;
     flex-direction: column;
     gap: 8px;
+  }
+  &__opt:disabled {
+    cursor: not-allowed;
+    opacity: 0.72;
   }
   &__opt {
     display: flex;

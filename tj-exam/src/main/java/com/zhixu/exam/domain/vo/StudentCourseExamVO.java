@@ -4,6 +4,7 @@ import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 import lombok.experimental.Accessors;
+import java.time.LocalDateTime;
 
 /**
  * 学生视角：某门课程下**已发布**的试卷（P17）。
@@ -31,6 +32,12 @@ public class StudentCourseExamVO {
     @ApiModelProperty("限时（分钟）；0 = 不限时")
     private Integer duration;
     private Integer passScore;
+
+    @ApiModelProperty("考试开始时间（空 = 不限）")
+    private LocalDateTime startAt;
+
+    @ApiModelProperty("考试结束时间（空 = 不限）—— 学生端据此把卡片标成「未开考 / 已结束」，避免点进去才报错")
+    private LocalDateTime endAt;
     @ApiModelProperty("我的作答记录id（null = 还没考）")
     private Long myRecordId;
     @ApiModelProperty("我的状态：0 进行中 / 1 已交卷 / 2 已复核；null = 未考")

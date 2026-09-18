@@ -22,7 +22,7 @@
 
     <ul v-else class="cel__list">
       <li v-for="e in list" :key="e.examId" class="cel__item">
-        <button class="cel__card" type="button" @click="open(e)">
+        <button class="cel__card" type="button" :disabled="locked(e)" @click="open(e)">
           <span class="cel__top">
             <span class="cel__name">{{ e.name }}</span>
             <span class="cel__badge" :class="badgeClass(e)">{{ badgeText(e) }}</span>
@@ -34,7 +34,7 @@
             <template v-else> · 不限时</template>
             <template v-if="e.passScore"> · 及格 {{ e.passScore }} 分</template>
           </span>
-          <span class="cel__action">{{ done(e) ? '查看答卷' : '开始答题' }}</span>
+          <span class="cel__action">{{ actionText(e) }}</span>
         </button>
       </li>
     </ul>
@@ -42,7 +42,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { pageCourseExams } from '@/api/subject.js';
 
@@ -58,8 +58,52 @@ const list = ref([]);
 /** 已交卷 / 已复核 = 有成绩可看；进行中（0）= 还没交，继续作答 */
 const done = (e) => e.myStatus != null && Number(e.myStatus) >= 1;
 
+// =============================================================================
+// 时间窗口（P38）
+// -----------------------------------------------------------------------------
+// 服务端**已经**会驳回窗口外的进入（那是权威口径）；这里只做一件事：
+// 提前把状态说清楚，别让卡片写着「开始答题」、点进去才吃一条报错。
+// ⚠️ 已交卷的仍然可点（要能看答卷）→「锁定」= 没交过 且 不在窗口内。
+// =============================================================================
+const now = ref(Date.now());
+let ticker = null;
+onMounted(() => {
+  // 半分钟刷一次就够：只为了让一直开着的页面能把「已结束」标出来
+  ticker = setInterval(() => {
+    now.value = Date.now();
+  }, 30000);
+});
+onUnmounted(() => {
+  if (ticker) clearInterval(ticker);
+});
+
+/** 后端给的是 "yyyy-MM-dd HH:mm:ss"；空 = 不限 */
+const toTs = (v) => (v ? new Date(String(v).replace(' ', 'T')).getTime() : null);
+
+const phase = (e) => {
+  const t = now.value;
+  const s = toTs(e.startAt);
+  const en = toTs(e.endAt);
+  if (s != null && t < s) return 'before';
+  if (en != null && t > en) return 'after';
+  return 'open';
+};
+
+const locked = (e) => !done(e) && phase(e) !== 'open';
+
+const actionText = (e) => {
+  if (done(e)) return '查看答卷';
+  const p = phase(e);
+  if (p === 'before') return `未开考（${String(e.startAt || '').slice(5, 16)}）`;
+  if (p === 'after') return '已结束';
+  return '开始答题';
+};
+
 const badgeText = (e) => {
   if (!done(e)) {
+    const p = phase(e);
+    if (p === 'before') return '未开考';
+    if (p === 'after') return '已结束';
     return e.myStatus === 0 ? '进行中' : '未作答';
   }
   const score = e.myScore == null ? '—' : e.myScore;
@@ -67,11 +111,12 @@ const badgeText = (e) => {
   return `${score}${total} 分 · ${e.myPassed === 1 ? '及格' : '未及格'}`;
 };
 const badgeClass = (e) => {
-  if (!done(e)) return 'is-todo';
+  if (!done(e)) return phase(e) === 'open' ? 'is-todo' : 'is-closed';
   return e.myPassed === 1 ? 'is-pass' : 'is-fail';
 };
 
 const open = (e) => {
+  if (locked(e)) return;   // 窗口外不让点（服务端也会驳回，这里只是别白跑一趟）
   if (done(e)) {
     router.push({ path: '/student/exams/review', query: { id: e.examId } });
     return;
@@ -161,6 +206,15 @@ watch(() => props.courseId, load);
       background: #f4f4f7;
       box-shadow: inset 0 0 0 1px rgba(0, 102, 204, 0.35);
     }
+    // 窗口外（未开考 / 已结束）：不给点，也别让它看起来能点
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.66;
+    }
+    &:disabled:hover {
+      background: #fafafc;
+      box-shadow: inset 0 0 0 1px rgba(16, 24, 40, 0.06);
+    }
   }
 
   &__top {
@@ -196,6 +250,10 @@ watch(() => props.courseId, load);
     &.is-fail {
       background: rgba(178, 106, 0, 0.12);
       color: #b26a00;
+    }
+    &.is-closed {
+      background: rgba(134, 134, 139, 0.14);
+      color: #86868b;
     }
   }
   &__meta {
