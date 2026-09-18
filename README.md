@@ -36,9 +36,15 @@
 | --- | --- |
 | ![学习页](./docs/screenshots/demo/student-learn.png) | ![AI 助教](./docs/screenshots/demo/student-ai.png) |
 
-**考试链路 · 交卷后的成绩与逐题解析**（判分只读作答时冻结的快照）
+| 在线答题（卷头限时 + 已作答计数） | 交卷后的成绩与逐题解析 |
+| --- | --- |
+| ![在线答题](./docs/screenshots/demo/student-exam.png) | ![成绩与解析](./docs/screenshots/demo/student-exam-result.png) |
 
-![成绩与解析](./docs/screenshots/demo/student-exam-result.png)
+> 判分只读**作答时冻结的快照**：交卷时保存题目与答案，之后讲师改题也不会影响已交卷的成绩。
+
+**公告与新闻**（未读 / 已读）
+
+![公告与新闻](./docs/screenshots/demo/student-notice.png)
 
 ### 讲师工作台
 
@@ -46,8 +52,11 @@
 | --- | --- |
 | ![讲师工作台概览](./docs/screenshots/demo/teacher-dashboard.png) | ![题库管理](./docs/screenshots/demo/teacher-questions.png) |
 
-> 建课向导、新建考试 / 组卷、主观题批改、考试统计、师生对话等界面截图见
-> `docs/screenshots/demo/README.md` 的清单（可选补充，不影响阅读）。
+| 主观题批改（打分 + 评语） | 师生对话（WebSocket 私信） |
+| --- | --- |
+| ![主观题批改](./docs/screenshots/demo/teacher-marking.png) | ![师生对话](./docs/screenshots/demo/teacher-chat.png) |
+
+> 建课向导、新建考试 / 组卷、考试统计等截图见 `docs/screenshots/demo/README.md` 的清单（可选补充，不影响阅读）。
 
 ---
 
